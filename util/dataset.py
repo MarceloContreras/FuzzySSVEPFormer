@@ -8,7 +8,7 @@ def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
                             split = 0.8, shuffle = True):
     
     # Takes non-target subjects and target sub
-    subs_list = [i for i in range(num_subs)]
+    subs_list = [i for i in range(num_subs)] #TODO: Still to check for Benchmark
     subs_list.remove(subject-1)
     
     train_x = train_X[subs_list,...]

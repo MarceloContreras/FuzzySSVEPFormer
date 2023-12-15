@@ -1,0 +1,1 @@
+python main.py --data_path datasets/Tsinghua --params_path datasets/Benchmark.yaml --dataset BENCHMARK

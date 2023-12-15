@@ -22,8 +22,13 @@ class DataHandler(object):
         self.check_length = params['Check_length']
 
     def getSubjectData(self,num_sub):
-        sub_path = os.path.join(self.path,'s'+ str(num_sub)+'.mat')
-        loaded_mat = sio.loadmat(sub_path)
+        try:
+            sub_path = os.path.join(self.path,'s'+ str(num_sub)+'.mat')
+            loaded_mat = sio.loadmat(sub_path)
+        except:
+            sub_path = os.path.join(self.path,'S'+ str(num_sub)+'.mat')
+            loaded_mat = sio.loadmat(sub_path)
+        
         try:
             data = loaded_mat['eeg']
         except: 
@@ -113,9 +118,9 @@ class BenchmarkHandler(DataHandler):
         """
         x = np.swapaxes(data,1,3)
         x = np.swapaxes(x,2,4)
-        x = x.reshape((-1,self.num_chn,self.num_samples))
+        #x = x.reshape((-1,64,self.num_samples))
         chn_list = [47,53,54,55,56,57,60,61,62]
-        return x[:,chn_list,:]
+        return x[:,:,:,chn_list,:]
 
     def sliceTemporal(self,data):
         """
@@ -131,4 +136,21 @@ class BenchmarkHandler(DataHandler):
             low_bound   = int(self.trigger_est*self.fs)
         return data[:,low_bound:high_bound,:,:]
 
+    def getAllSubjectsData(self):
+
+        base_y  = np.mgrid[0:self.classes,0:self.trials][0].flatten()
+
+        # Get train data
+        train_x = np.zeros((self.num_subjects,64,self.num_samples,self.classes,self.trials))
+        for sub in range(self.num_subjects):
+            sub_signal = self.getSubjectData(sub + 1)
+            preproc_signal = self.filterSignal(sub_signal)
+            preproc_signal = self.sliceTemporal(preproc_signal)
+            preproc_signal = np.expand_dims(preproc_signal,axis = 0)
+            train_x[sub,...] = preproc_signal
+
+        train_x = self.reorderEEGmatrix(train_x)
+        train_y = np.tile(base_y,self.num_subjects)
+
+        return train_x,train_y
 

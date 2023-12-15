@@ -5,8 +5,10 @@ import datetime
 import yaml
 import csv
 import os
+import numpy as np
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
+
 from models import *
 from util import NakanishiHandler,BenchmarkHandler,UTECHandler,trainSubjectIndependent,seed_everything
 from util.engine import EarlyStopping,train_one_epoch,evaluate
@@ -34,11 +36,11 @@ def get_args_parser():
                         help='weight decay (default: 1e-3)')
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='datasets/2015_Nakanishi_SSVEP_database', type=str,
+    parser.add_argument('--data_path', default='datasets/Tsinghua', type=str,
                         help='dataset path')
-    parser.add_argument('--params_path', default='datasets/Nakanishi.yaml', type=str,
+    parser.add_argument('--params_path', default='datasets/Benchmark.yaml', type=str,
                         help='Parameter dataset path')
-    parser.add_argument('--dataset', default='NAKANISHI', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
+    parser.add_argument('--dataset', default='BENCHMARK', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
                         type=str, help='Image Net dataset path')
     parser.add_argument('--output_dir', default='results',
                         help='path where to save, empty for no saving')
@@ -81,7 +83,7 @@ def main(args):
 
     # Checking signal length 
     if args.signal_size in params['Check_length'] and args.dataset == 'NAKANISHI':
-        length = int(params['Fs']*args.signal_size*2) - 1
+        length = int(params['Fs']*args.signal_size*2) - 1   
     else:
         length = int(params['Fs']*args.signal_size*2)
 
@@ -114,17 +116,17 @@ def main(args):
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
         
         start_time = time.time()
-        train_losses = []
-        valid_losses = []
+        train_losses = np.zeros(args.epochs)
+        valid_losses = np.zeros(args.epochs)
         print(f'Subject {subject + 1}')
         for epoch in range(args.epochs):
             train_loss = train_one_epoch(data_loader_train,
                                         model, criterion, 
                                         optimizer, device)
             valid_loss,_ = evaluate(data_loader_val, model, criterion, device)
-            train_losses.append(train_loss/len(data_loader_train))
-            valid_losses.append(valid_loss/len(data_loader_val))
-            print(f'Epoch {epoch}/{args.epochs} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
+            train_losses[epoch] = train_loss/len(data_loader_train)
+            valid_losses[epoch] = valid_loss/len(data_loader_val)
+            print(f'Epoch {epoch}/{args.epochs} / train loss:{train_losses[epoch]:.4f} / val loss:{valid_losses[epoch]:.4f}')
 
         # Reports    
         total_time = time.time() - start_time
@@ -135,6 +137,16 @@ def main(args):
         test_accuracy.append(round(test_acc,4))
         print('Test accuracy {:.3f}'.format(test_acc))
         print('')
+
+        import matplotlib.pyplot as plt
+        plt.plot(train_losses)
+        plt.plot(valid_losses)
+        plt.title(f'Train/Valid loss of Sub {subject}')
+        plt.grid()
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss (Cross entropy)')
+        plt.legend(['Train','Valid'])
+        plt.show()
 
     # save results
     with open(filename, 'a') as file:
