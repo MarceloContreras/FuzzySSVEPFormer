@@ -50,7 +50,7 @@ def train_one_epoch(data_loader,model,criterion,optimizer,device):
         loss.backward()
         optimizer.step()
         # Update train loss
-        train_loss += loss.item() #? Funciona
+        train_loss += loss.item() 
     return train_loss
 
 

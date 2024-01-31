@@ -153,4 +153,3 @@ class BenchmarkHandler(DataHandler):
         train_y = np.tile(base_y,self.num_subjects)
 
         return train_x,train_y
-

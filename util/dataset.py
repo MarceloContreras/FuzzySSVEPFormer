@@ -57,4 +57,3 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     plt.plot(train_x[0,0,:])
     plt.show()
-

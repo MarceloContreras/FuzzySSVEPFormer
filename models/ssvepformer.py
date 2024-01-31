@@ -81,17 +81,23 @@ class MLP_head(nn.Module):
 
 
 class SSVEPformer(nn.Module):
-  def __init__(self, channels = 8, classes = 12, length = 256*2, dropout = 0.5):
+  def __init__(self, params, dropout = 0.5):
     super().__init__()
-    self.chn_combination = Chnl_combination(dropout, channels, length)
-    self.SSVEPencoder = Encoder(dropout, channels, length)
-    self.MLP = MLP_head(channels, classes, length, dropout)
+    
+    self.nfft = round(params['Fs']/params['Resolution']) 
+    self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
+    self.fft_end = int(round(params['Filt.high_cut']/params['Resolution'])) + 1
+    length = 2*(self.fft_end-self.fft_start)
+
+    self.chn_combination = Chnl_combination(dropout, params['Channels'], length)
+    self.SSVEPencoder = Encoder(dropout, params['Channels'], length)
+    self.MLP = MLP_head(params['Channels'], params['Classes'], length, dropout)
 
   def forward(self,x):
-    fft_im = torch.fft.fft(x)
+    fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)
     real = fft_im.real
     imag = fft_im.imag
-    x = torch.cat((real,imag), -1)
+    x = torch.cat((real[...,self.fft_start:self.fft_end],imag[...,self.fft_start:self.fft_end]), -1)
     x = self.chn_combination(x)
     x = self.SSVEPencoder(x)
     x = self.MLP(x)
@@ -101,20 +107,3 @@ class SSVEPformer(nn.Module):
 def init_normal(m):
     if type(m) == nn.Linear or type(m) == nn.Conv1d:
         nn.init.normal_(m.weight,0,0.01)
-
-if __name__ == "__main__":
-  from ptflops import get_model_complexity_info
-  import re
-
-  #Model thats already available
-  model = SSVEPformer(channels = 3, classes = 4, length = int(250*2), dropout = 0.5)
-  macs, params = get_model_complexity_info(model, (3, 250), as_strings=True,
-  print_per_layer_stat=True, verbose=True)
-  # Extract the numerical value
-  flops = eval(re.findall(r'([\d.]+)', macs)[0])*2
-  # Extract the unit
-  flops_unit = re.findall(r'([A-Za-z]+)', macs)[0][0]
-
-  print('Computational complexity: {:<8}'.format(macs))
-  print('Computational complexity: {} {}Flops'.format(flops, flops_unit))
-  print('Number of parameters: {:<8}'.format(params))

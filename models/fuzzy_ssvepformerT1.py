@@ -82,53 +82,70 @@ class fuzzyEncoder(nn.Module):
 
 # Variant A
 class fuzzySSVEPformerA(nn.Module):
-    def __init__(self, channels = 8, classes = 12, length = 256*2, dropout = 0.5):
+    def __init__(self, params, dropout = 0.5):
       super().__init__()
-      self.chn_combination = Chnl_combination(dropout, channels, length)
-      self.SSVEPencoder = Encoder(dropout, channels, length)
-      self.MLP = fuzzyMLP_head(channels, classes, length, dropout)
+      self.nfft = round(params['Fs']/params['Resolution']) 
+      self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
+      self.fft_end = int(round(params['Filt.high_cut']/params['Resolution'])) + 1
+      length = 2*(self.fft_end-self.fft_start)
+
+      self.chn_combination = Chnl_combination(dropout, params['Channels'], length)
+      self.SSVEPencoder = Encoder(dropout, params['Channels'], length)
+      self.MLP = fuzzyMLP_head(params['Channels'], params['Classes'], length, dropout)
 
     def forward(self,x):
-      fft_im = torch.fft.fft(x)
+      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)
       real = fft_im.real
       imag = fft_im.imag
-      x = torch.cat((real,imag), -1)
+      x = torch.cat((real[...,self.fft_start:self.fft_end],imag[...,self.fft_start:self.fft_end]), -1)
       x = self.chn_combination(x)
       x = self.SSVEPencoder(x)
       x = self.MLP(x)
       return x
 
+
 # Variant B
 class fuzzySSVEPformerB(nn.Module):
-    def __init__(self, channels = 8, classes = 12, length = 256*2, dropout = 0.5):
+    def __init__(self, params, dropout = 0.5):
       super().__init__()
-      self.chn_combination = Chnl_combination(dropout, channels, length)
-      self.SSVEPencoder = fuzzyEncoder(dropout, channels, length)
-      self.MLP = MLP_head(channels, classes, length, dropout)
+      self.nfft = round(params['Fs']/params['Resolution']) 
+      self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
+      self.fft_end = int(round(params['Filt.high_cut']/params['Resolution'])) + 1
+      length = 2*(self.fft_end-self.fft_start)
+
+      self.chn_combination = Chnl_combination(dropout, params['Channels'], length)
+      self.SSVEPencoder = fuzzyEncoder(dropout, params['Channels'], length)
+      self.MLP = MLP_head(params['Channels'], params['Classes'], length, dropout)
 
     def forward(self,x):
-      fft_im = torch.fft.fft(x)
+      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)
       real = fft_im.real
       imag = fft_im.imag
-      x = torch.cat((real,imag), -1)
+      x = torch.cat((real[...,self.fft_start:self.fft_end],imag[...,self.fft_start:self.fft_end]), -1)
       x = self.chn_combination(x)
       x = self.SSVEPencoder(x)
       x = self.MLP(x)
       return x
     
+
 # Variant C
 class fuzzySSVEPformerC(nn.Module):
-    def __init__(self, channels = 8, classes = 12, length = 256*2, dropout = 0.5):
+    def __init__(self, params, dropout = 0.5):
       super().__init__()
-      self.chn_combination = Chnl_combination(dropout, channels, length)
-      self.SSVEPencoder = fuzzyEncoder(dropout, channels, length)
-      self.MLP = fuzzyMLP_head(channels, classes, length, dropout)
+      self.nfft = round(params['Fs']/params['Resolution']) 
+      self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
+      self.fft_end = int(round(params['Filt.high_cut']/params['Resolution'])) + 1
+      length = 2*(self.fft_end-self.fft_start)
+
+      self.chn_combination = Chnl_combination(dropout, params['Channels'], length)
+      self.SSVEPencoder = fuzzyEncoder(dropout, params['Channels'], length)
+      self.MLP = fuzzyMLP_head(params['Channels'], params['Classes'], length, dropout)
 
     def forward(self,x):
-      fft_im = torch.fft.fft(x)
+      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)
       real = fft_im.real
       imag = fft_im.imag
-      x = torch.cat((real,imag), -1)
+      x = torch.cat((real[...,self.fft_start:self.fft_end],imag[...,self.fft_start:self.fft_end]), -1)
       x = self.chn_combination(x)
       x = self.SSVEPencoder(x)
       x = self.MLP(x)

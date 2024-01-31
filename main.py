@@ -5,10 +5,8 @@ import datetime
 import yaml
 import csv
 import os
-import numpy as np
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
-
 from models import *
 from util import NakanishiHandler,BenchmarkHandler,UTECHandler,trainSubjectIndependent,seed_everything
 from util.engine import EarlyStopping,train_one_epoch,evaluate
@@ -20,11 +18,11 @@ def get_args_parser():
     parser.add_argument('--epochs', default=100, type=int)
 
     # Model parameters
-    parser.add_argument('--model', default='ssvepformer', type=str, choices=['ssvepformer', 
+    parser.add_argument('--model', default='f1ssvepformer_A', type=str, choices=['ssvepformer', 
                                                                              'f1ssvepformer_A', 'f1ssvepformer_B','f1ssvepformer_C',
                                                                              'f2ssvepformer_A', 'f2ssvepformer_B','f2ssvepformer_C'],
                         help='Name of model to train')
-    parser.add_argument('--signal_size', default=1,
+    parser.add_argument('--signal_size', default=0.6,
                         type=float, help='signal sample size')
 
     # Optimizer parameters
@@ -36,11 +34,11 @@ def get_args_parser():
                         help='weight decay (default: 1e-3)')
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='datasets/Tsinghua', type=str,
+    parser.add_argument('--data_path', default='datasets/2015_Nakanishi_SSVEP_database', type=str,
                         help='dataset path')
-    parser.add_argument('--params_path', default='datasets/Benchmark.yaml', type=str,
+    parser.add_argument('--params_path', default='datasets/Nakanishi.yaml', type=str,
                         help='Parameter dataset path')
-    parser.add_argument('--dataset', default='BENCHMARK', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
+    parser.add_argument('--dataset', default='NAKANISHI', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
                         type=str, help='Image Net dataset path')
     parser.add_argument('--output_dir', default='results',
                         help='path where to save, empty for no saving')
@@ -81,34 +79,27 @@ def main(args):
             datahandler = UTECHandler(params,args.signal_size,args.data_path)
     train_x,train_y = datahandler.getAllSubjectsData()
 
-    # Checking signal length 
-    if args.signal_size in params['Check_length'] and args.dataset == 'NAKANISHI':
-        length = int(params['Fs']*args.signal_size*2) - 1   
-    else:
-        length = int(params['Fs']*args.signal_size*2)
-
     # Main training/validation and testing loop
     print(f"SSVEPformer: Training {args.model} net for {args.epochs} epochs/{args.batch_size} batch")
     test_accuracy = []
     for subject in range(params['Subs']):
         data_loader_train, data_loader_val, data_loader_test = trainSubjectIndependent(train_x,train_y,subject+1,
                                                                         params['Subs'],params['Trials'],params['Classes'],args)                           
-        model_args = [params['Channels'],params['Classes'],length]
         match args.model:
             case 'ssvepformer':
-                model = SSVEPformer(*model_args)
+                model = SSVEPformer(params)
             case'f1ssvepformer_A':
-                model = fuzzySSVEPformerA(*model_args)
+                model = fuzzySSVEPformerA(params)
             case 'f1ssvepformer_B':
-                model = fuzzySSVEPformerB(*model_args)
+                model = fuzzySSVEPformerB(params)
             case'f1ssvepformer_C':
-                model = fuzzySSVEPformerC(*model_args)
+                model = fuzzySSVEPformerC(params)
             case 'f2ssvepformer_A':
-                model = fuzzyT2SSVEPformerA(*model_args)
+                model = fuzzyT2SSVEPformerA(params)
             case 'f2ssvepformer_B':
-                model = fuzzyT2SSVEPformerB(*model_args)
+                model = fuzzyT2SSVEPformerB(params)
             case'f2ssvepformer_C':
-                model = fuzzyT2SSVEPformerC(*model_args)
+                model = fuzzyT2SSVEPformerC(params)
 
         model.apply(init_normal)
         model.to(device)
@@ -116,17 +107,17 @@ def main(args):
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
         
         start_time = time.time()
-        train_losses = np.zeros(args.epochs)
-        valid_losses = np.zeros(args.epochs)
+        train_losses = []
+        valid_losses = []
         print(f'Subject {subject + 1}')
         for epoch in range(args.epochs):
             train_loss = train_one_epoch(data_loader_train,
                                         model, criterion, 
                                         optimizer, device)
             valid_loss,_ = evaluate(data_loader_val, model, criterion, device)
-            train_losses[epoch] = train_loss/len(data_loader_train)
-            valid_losses[epoch] = valid_loss/len(data_loader_val)
-            print(f'Epoch {epoch}/{args.epochs} / train loss:{train_losses[epoch]:.4f} / val loss:{valid_losses[epoch]:.4f}')
+            train_losses.append(train_loss/len(data_loader_train))
+            valid_losses.append(valid_loss/len(data_loader_val))
+            print(f'Epoch {epoch}/{args.epochs} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
 
         # Reports    
         total_time = time.time() - start_time
@@ -137,16 +128,6 @@ def main(args):
         test_accuracy.append(round(test_acc,4))
         print('Test accuracy {:.3f}'.format(test_acc))
         print('')
-
-        import matplotlib.pyplot as plt
-        plt.plot(train_losses)
-        plt.plot(valid_losses)
-        plt.title(f'Train/Valid loss of Sub {subject}')
-        plt.grid()
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss (Cross entropy)')
-        plt.legend(['Train','Valid'])
-        plt.show()
 
     # save results
     with open(filename, 'a') as file:

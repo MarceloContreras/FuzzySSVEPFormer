@@ -1,1 +1,0 @@
-python main.py --data_path datasets/2015_Nakanishi_SSVEP_database --params_path datasets/Nakanishi.yaml --dataset NAKANISHI --epochs 300
