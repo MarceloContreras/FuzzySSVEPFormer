@@ -1,11 +1,12 @@
 import torch
 import numpy as np
 import yaml
+from scipy import signal
 from .process_data import NakanishiHandler
 
 def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
                             trials,classes,args,
-                            split = 0.8, shuffle = True):
+                            split = 0.8, shuffle = True, fs = 250, fb = False, bands = 'all'):
     
     # Takes non-target subjects and target sub
     subs_list = [i for i in range(num_subs)] #TODO: Still to check for Benchmark
@@ -17,6 +18,17 @@ def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
     test_x = test_x.reshape((-1,test_x.shape[-2],test_x.shape[-1]))
     train_y = train_Y[trials*classes:] 
     test_y  = train_Y[:trials*classes]
+
+    print(bands)
+    if fb:
+        fb_train_x = np.swapaxes(filterbank(fs,train_x),0,1)
+        fb_test_x = np.swapaxes(filterbank(fs,test_x),0,1)
+        if not(bands == "all"):
+            train_x = fb_train_x[:,bands,...]
+            test_x = fb_test_x[:,bands,...]
+        else:
+            train_x = fb_train_x
+            test_x = fb_test_x
 
     # Dataset creation from numpy file to Torch class
     train_x = torch.Tensor(train_x)
@@ -41,19 +53,18 @@ def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
 
     return train_loader, val_loader, test_loader
 
-def testDataIndepedent(train_X):
-    train_x = train_X.reshape((-1,train_X.shape[-2],train_X.shape[-1]))
-    return train_x
 
-if __name__ == '__main__':
-    params_path = '/home/marcelo/Documentos/UTEC/Tesis I/FuzzySSVEPformer/datasets/Nakanishi.yaml'
-    data_path = '/home/marcelo/Documentos/UTEC/Tesis I/FuzzySSVEPformer/datasets/2015_Nakanishi_SSVEP_database'
-    with open(params_path) as f:
-        params = yaml.load(f, Loader=yaml.loader.SafeLoader)
-    datahandler = NakanishiHandler(params,1.0,data_path)
-    train_x,train_y = datahandler.getAllSubjectsData()
-    train_x = testDataIndepedent(train_x)
+def filterbank(fs,X,num_subbands = 3):
+    # https://github.com/pikipity/SSVEP-Analysis-Toolbox/blob/main/SSVEPAnalysisToolbox/utils/nakanishipreprocess.py
+    filterbank_X = np.zeros((num_subbands, X.shape[0], X.shape[1], X.shape[2]))
+    for k in range(1, num_subbands+1, 1):
+        Wp = [(8*k)/(fs/2), 80/(fs/2)]
+        Ws = [(8*k-2)/(fs/2), 90/(fs/2)]
+        N, Wn = signal.cheb1ord(Wp, Ws, 3, 40)
 
-    import matplotlib.pyplot as plt
-    plt.plot(train_x[0,0,:])
-    plt.show()
+        bpB, bpA = signal.cheby1(N, 0.5, Wn, btype = 'bandpass')
+
+        tmp = signal.filtfilt(bpB, bpA, X, axis = -1, padtype='odd', padlen=3*(max(len(bpB),len(bpA))-1))
+        filterbank_X[k-1,...] = tmp
+
+    return filterbank_X
