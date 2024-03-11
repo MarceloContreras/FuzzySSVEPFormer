@@ -18,11 +18,11 @@ def get_args_parser():
     parser.add_argument('--epochs', default=100, type=int)
 
     # Model parameters
-    parser.add_argument('--model', default='f1ssvepformer_A', type=str, choices=['ssvepformer', 
+    parser.add_argument('--model', default='ssvepformer', type=str, choices=['ssvepformer', 
                                                                              'f1ssvepformer_A', 'f1ssvepformer_B','f1ssvepformer_C',
                                                                              'f2ssvepformer_A', 'f2ssvepformer_B','f2ssvepformer_C'],
                         help='Name of model to train')
-    parser.add_argument('--signal_size', default=0.6,
+    parser.add_argument('--signal_size', default=0.5,
                         type=float, help='signal sample size')
 
     # Optimizer parameters
@@ -44,7 +44,7 @@ def get_args_parser():
                         help='path where to save, empty for no saving')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
-    parser.add_argument('--num_workers', default=8, type=int)
+    parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--pin-mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no-pin-mem', action='store_false', dest='pin_mem',
@@ -84,7 +84,7 @@ def main(args):
     test_accuracy = []
     for subject in range(params['Subs']):
         data_loader_train, data_loader_val, data_loader_test = trainSubjectIndependent(train_x,train_y,subject+1,
-                                                                        params['Subs'],params['Trials'],params['Classes'],args)                           
+                                                                        params['Subs'],params['Trials'],params['Classes'],device,args)                           
         match args.model:
             case 'ssvepformer':
                 model = SSVEPformer(params)

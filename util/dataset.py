@@ -5,7 +5,7 @@ from scipy import signal
 from .process_data import NakanishiHandler
 
 def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
-                            trials,classes,args,
+                            trials,classes,device,args,
                             split = 0.8, shuffle = True, fs = 250, fb = False, bands = 'all'):
     
     # Takes non-target subjects and target sub
@@ -31,11 +31,18 @@ def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
             test_x = fb_test_x
 
     # Dataset creation from numpy file to Torch class
-    train_x = torch.Tensor(train_x)
-    train_y = torch.Tensor(train_y).type(torch.int64)
+    # train_x = torch.Tensor(train_x)
+    # train_y = torch.Tensor(train_y).type(torch.int64)
+    # trainset   = torch.utils.data.TensorDataset(train_x, train_y)
+    # test_x = torch.Tensor(test_x)
+    # test_y = torch.Tensor(test_y).type(torch.int64)
+    # testset   = torch.utils.data.TensorDataset(test_x, test_y)
+    
+    train_x = torch.from_numpy(train_x).type(torch.float32)
+    train_y = torch.from_numpy(train_y).type(torch.int64)
     trainset   = torch.utils.data.TensorDataset(train_x, train_y)
-    test_x = torch.Tensor(test_x)
-    test_y = torch.Tensor(test_y).type(torch.int64)
+    test_x = torch.from_numpy(test_x).type(torch.float32)
+    test_y = torch.from_numpy(test_y).type(torch.int64)
     testset   = torch.utils.data.TensorDataset(test_x, test_y)
     
     # it includes train-val-test split under sub.independent scheme 

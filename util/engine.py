@@ -34,22 +34,35 @@ class EarlyStopping:
         self.val_loss_min = val_loss
 
 
-def train_one_epoch(data_loader,model,criterion,optimizer,device):
+def train_one_epoch(data_loader,model,criterion,optimizer,device,half=False):
     model.train()
     train_loss = 0.0
+    scaler = torch.cuda.amp.GradScaler(enabled=half)
+
     for batch_idx, data in enumerate(data_loader, 0):
         # get the inputs; data is a list of [inputs, labels]
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)
-        # zero the parameter gradients
+        
         optimizer.zero_grad()
-        # forward + backward + optimize
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
+        if half:
+            with torch.cuda.amp.autocast():
+                # forward + backward + optimize
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+        else:
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+
         train_loss += loss.item()
-        loss.backward()
-        optimizer.step()
-        # Update train loss
+        
+        if half:
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
         train_loss += loss.item() 
     return train_loss
 

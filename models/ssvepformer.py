@@ -9,7 +9,7 @@ SSVEPformer
 class Chnl_combination(nn.Module):
     def __init__(self, dropout, channels, length):
       super().__init__()
-      self.conv = nn.Conv1d(channels,2*channels,1,padding = 'same')
+      self.conv = nn.Conv1d(channels,2*channels,1,padding = 'same',bias=False)
       self.norm = nn.LayerNorm([channels*2,length])
       self.drop = nn.Dropout(dropout)
 
@@ -23,7 +23,7 @@ class CNN_module(nn.Module):
   def __init__(self,dropout, channels, length):
     super().__init__()
     self.norm1   = nn.LayerNorm([channels*2,length])
-    self.conv    = nn.Conv1d(2*channels,2*channels,31,padding = 'same')
+    self.conv    = nn.Conv1d(2*channels,2*channels,31,padding = 'same',bias=False)
     self.norm2   = nn.LayerNorm([channels*2,length])
     self.dropout = nn.Dropout(dropout)
 

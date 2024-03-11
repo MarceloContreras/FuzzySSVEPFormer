@@ -44,7 +44,7 @@ def get_args_parser():
                         help='path where to save, empty for no saving')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
-    parser.add_argument('--num_workers', default=8, type=int)
+    parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--pin-mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no-pin-mem', action='store_false', dest='pin_mem',
@@ -87,7 +87,7 @@ def main(args):
         # Training of subnets: 
         for filter in range(3):
             data_loader_train, data_loader_val, data_loader_test = trainSubjectIndependent(train_x,train_y,subject+1,
-                                                                            params['Subs'],params['Trials'],params['Classes'],args,fs = params['Fs'],fb = True,bands = filter)                           
+                                                                            params['Subs'],params['Trials'],params['Classes'],device,args,fs = params['Fs'],fb = True,bands = filter)                           
             match args.model:
                 case 'ssvepformer':
                     model = SSVEPformer(params)
@@ -138,14 +138,14 @@ def main(args):
         train_losses = []
         valid_losses = []
         print(f'Subject {subject + 1}')
-        for epoch in range(20):
+        for epoch in range(50):
             train_loss = train_one_epoch(data_loader_train,
                                         model, criterion, 
                                         optimizer, device)
             valid_loss,_ = evaluate(data_loader_val, model, criterion, device)
             train_losses.append(train_loss/len(data_loader_train))
             valid_losses.append(valid_loss/len(data_loader_val))
-            print(f'Epoch {epoch}/{20} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
+            print(f'Epoch {epoch}/{50} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
 
         _,test_acc = evaluate(data_loader_test, model, criterion, device)
         test_accuracy.append(round(test_acc,4))

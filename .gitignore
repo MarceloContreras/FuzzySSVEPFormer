@@ -4,3 +4,4 @@ util/__pycache__
 results
 datasets/2015_Nakanishi_SSVEP_database
 datasets/Tsinghua
+evaluation.sh
