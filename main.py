@@ -7,6 +7,7 @@ import csv
 import os
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
+import matplotlib.pyplot as plt
 from models import *
 from util import NakanishiHandler,BenchmarkHandler,UTECHandler,trainSubjectIndependent,seed_everything
 from util.engine import EarlyStopping,train_one_epoch,evaluate
@@ -15,7 +16,7 @@ def get_args_parser():
     parser = argparse.ArgumentParser(
         'EfficientFormer training and evaluation script', add_help=False)
     parser.add_argument('--batch-size', default=128, type=int)
-    parser.add_argument('--epochs', default=100, type=int)
+    parser.add_argument('--epochs', default=300, type=int)
 
     # Model parameters
     parser.add_argument('--model', default='ssvepformer', type=str, choices=['ssvepformer', 
@@ -34,11 +35,11 @@ def get_args_parser():
                         help='weight decay (default: 1e-3)')
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='datasets/2015_Nakanishi_SSVEP_database', type=str,
+    parser.add_argument('--data_path', default='datasets/Noisy-UTEC', type=str,
                         help='dataset path')
-    parser.add_argument('--params_path', default='datasets/Nakanishi.yaml', type=str,
+    parser.add_argument('--params_path', default='datasets/UTEC.yaml', type=str,
                         help='Parameter dataset path')
-    parser.add_argument('--dataset', default='NAKANISHI', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
+    parser.add_argument('--dataset', default='UTEC', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
                         type=str, help='Image Net dataset path')
     parser.add_argument('--output_dir', default='results',
                         help='path where to save, empty for no saving')
@@ -118,6 +119,11 @@ def main(args):
             train_losses.append(train_loss/len(data_loader_train))
             valid_losses.append(valid_loss/len(data_loader_val))
             print(f'Epoch {epoch}/{args.epochs} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
+
+        # plt.plot(train_losses)
+        # plt.plot(valid_losses)
+        # plt.savefig(f'S{subject}.png')
+        # plt.close()
 
         # Reports    
         total_time = time.time() - start_time

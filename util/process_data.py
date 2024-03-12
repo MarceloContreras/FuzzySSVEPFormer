@@ -95,6 +95,20 @@ class UTECHandler(DataHandler):
     def __init__(self, params, time_window, path):
         super().__init__(params, time_window, path)
 
+    def sliceTemporal(self,data):
+        """
+        Slices the signal to temporal section of [0.135, d + 0.135]
+        where d is the window size (in seconds). The estimulus
+        triggering was determined in 0.135
+        """
+        low_bound   = int(self.trigger_est*self.fs)
+        high_bound  = int((self.trigger_est+self.time_window)*self.fs)
+        if self.time_window in self.check_length:
+            low_bound   = math.ceil(self.trigger_est*self.fs)
+        else:
+            low_bound   = int(self.trigger_est*self.fs)
+        return data[:,:,:,low_bound:high_bound]
+
     def filterSignal(self,data):
         # Notch filterind to remove signal noise 60 Hz
         b_notch, a_notch = iirnotch(60.0, 20.0, self.fs)
@@ -103,9 +117,25 @@ class UTECHandler(DataHandler):
         nyq = 0.5 * self.fs
         low = self.lowfreq_cut / nyq
         high = self.highfreq_cut / nyq
-        b, a = butter(self.filt_orderorder, [low, high], btype='band')
+        b, a = butter(self.filt_order, [low, high], btype='band')
         y = lfilter(b, a, y, axis = self.filt_axis)
         return y
+
+    def getAllSubjectsData(self):
+
+        base_y  = np.mgrid[0:self.classes,0:self.trials][0].flatten()
+
+        # Get train data
+        train_x = np.zeros((self.num_subjects,self.classes,self.trials,self.num_chn,self.num_samples))
+        for sub in range(self.num_subjects):
+            sub_signal = self.getSubjectData(sub + 1)
+            preproc_signal = self.filterSignal(sub_signal)
+            preproc_signal = self.sliceTemporal(preproc_signal)
+            preproc_signal = np.expand_dims(preproc_signal,axis = 0)
+            train_x[sub,...] = preproc_signal
+
+        train_y = np.tile(base_y,self.num_subjects)
+        return train_x,train_y
 
 class BenchmarkHandler(DataHandler):
     def __init__(self, params, time_window, path):

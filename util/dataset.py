@@ -1,8 +1,6 @@
 import torch
 import numpy as np
-import yaml
 from scipy import signal
-from .process_data import NakanishiHandler
 
 def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
                             trials,classes,device,args,
