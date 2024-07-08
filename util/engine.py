@@ -3,7 +3,7 @@ import numpy as np
 
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
-    def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
+    def __init__(self, patience=20, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
         self.patience = patience
         self.verbose = verbose
         self.counter = 0
@@ -14,25 +14,18 @@ class EarlyStopping:
         self.path = path
         self.trace_func = trace_func
 
-    def __call__(self, val_loss, model):
+    def __call__(self, val_loss):
 
-        score = -val_loss
+        score = val_loss
         if self.best_score is None:
             self.best_score = score
-            self.save_checkpoint(val_loss, model)
-        elif score < self.best_score + self.delta:
+        elif score > (self.best_score + self.delta):
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
             self.best_score = score
-            self.save_checkpoint(val_loss, model)
             self.counter = 0
-
-    def save_checkpoint(self, val_loss, model):
-        '''Saves model when validation loss decrease.'''
-        self.val_loss_min = val_loss
-
 
 def train_one_epoch(data_loader,model,criterion,optimizer,device,half=False):
     model.train()
@@ -54,8 +47,6 @@ def train_one_epoch(data_loader,model,criterion,optimizer,device,half=False):
             outputs = model(inputs)
             loss = criterion(outputs, labels)
 
-        train_loss += loss.item()
-        
         if half:
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -63,7 +54,7 @@ def train_one_epoch(data_loader,model,criterion,optimizer,device,half=False):
         else:
             loss.backward()
             optimizer.step()
-        train_loss += loss.item() 
+        train_loss += loss.item()
     return train_loss
 
 

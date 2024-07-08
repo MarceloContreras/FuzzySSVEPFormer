@@ -2,7 +2,7 @@ import scipy.io as sio
 import os
 import math
 import numpy as np
-from scipy.signal import butter, lfilter, iirnotch, filtfilt
+from scipy.signal import butter, iirnotch, filtfilt
 
 class DataHandler(object):
     def __init__(self,params,time_window,path):
@@ -15,11 +15,10 @@ class DataHandler(object):
         self.filt_order = params['Filt.order']
         self.lowfreq_cut = params['Filt.low_cut']
         self.trigger_est = params['Trigger']
-        self.num_samples = int(time_window*self.fs)
+        self.num_samples = round(time_window*self.fs)
         self.time_window = time_window
         self.highfreq_cut = params['Filt.high_cut']
         self.num_subjects = params['Subs']
-        self.check_length = params['Check_length']
 
     def getSubjectData(self,num_sub):
         try:
@@ -40,7 +39,7 @@ class DataHandler(object):
         low = self.lowfreq_cut / nyq
         high = self.highfreq_cut / nyq
         b, a = butter(self.filt_order, [low, high], btype='band')
-        y = lfilter(b, a, data, axis = self.filt_axis)
+        y = filtfilt(b, a, data, axis = self.filt_axis)
         return y
     
     def sliceTemporal(self,data):
@@ -49,13 +48,7 @@ class DataHandler(object):
         where d is the window size (in seconds). The estimulus
         triggering was determined in 0.135
         """
-        low_bound   = int(self.trigger_est*self.fs)
-        high_bound  = int((self.trigger_est+self.time_window)*self.fs)
-        if self.time_window in self.check_length:
-            low_bound   = math.ceil(self.trigger_est*self.fs)
-        else:
-            low_bound   = int(self.trigger_est*self.fs)
-        return data[:,:,low_bound:high_bound,:]
+        return data[:,:,:int(self.time_window*self.fs),:]
     
     def reorderEEGmatrix(self,data):
         """
@@ -65,7 +58,6 @@ class DataHandler(object):
         """
         x = np.swapaxes(data,2,4) # Put the trials'axis before the EEG matrix
         x = np.swapaxes(x,3,4) # Put the EEG in the shape (chn,samples)
-        #x = x.reshape((-1,self.num_chn,self.num_samples)) # Reshapes it to merge subject,trials & estimulus
         return x
     
     def getAllSubjectsData(self):
@@ -76,6 +68,7 @@ class DataHandler(object):
         train_x = np.zeros((self.num_subjects,self.classes,self.num_chn,self.num_samples,self.trials))
         for sub in range(self.num_subjects):
             sub_signal = self.getSubjectData(sub + 1)
+            sub_signal = sub_signal[:,:,int(38+self.trigger_est*self.fs):int(38+self.trigger_est*self.fs+4*self.fs-1),:] #Onset + visual delay
             preproc_signal = self.filterSignal(sub_signal)
             preproc_signal = self.sliceTemporal(preproc_signal)
             preproc_signal = np.expand_dims(preproc_signal,axis = 0)
@@ -101,24 +94,19 @@ class UTECHandler(DataHandler):
         where d is the window size (in seconds). The estimulus
         triggering was determined in 0.135
         """
-        low_bound   = int(self.trigger_est*self.fs)
-        high_bound  = int((self.trigger_est+self.time_window)*self.fs)
-        if self.time_window in self.check_length:
-            low_bound   = math.ceil(self.trigger_est*self.fs)
-        else:
-            low_bound   = int(self.trigger_est*self.fs)
-        return data[:,:,:,low_bound:high_bound]
+        return data[:,:,:,:int(self.time_window*self.fs)]
 
     def filterSignal(self,data):
         # Notch filterind to remove signal noise 60 Hz
-        b_notch, a_notch = iirnotch(60.0, 20.0, self.fs)
+        b_notch, a_notch = iirnotch(60.0, 7.5, self.fs)
         y = filtfilt(b_notch, a_notch, data, axis = self.filt_axis)
+        
         # Butter bandpass filter
         nyq = 0.5 * self.fs
         low = self.lowfreq_cut / nyq
         high = self.highfreq_cut / nyq
         b, a = butter(self.filt_order, [low, high], btype='band')
-        y = lfilter(b, a, y, axis = self.filt_axis)
+        y = filtfilt(b, a, y, axis = self.filt_axis)
         return y
 
     def getAllSubjectsData(self):
@@ -129,6 +117,7 @@ class UTECHandler(DataHandler):
         train_x = np.zeros((self.num_subjects,self.classes,self.trials,self.num_chn,self.num_samples))
         for sub in range(self.num_subjects):
             sub_signal = self.getSubjectData(sub + 1)
+            sub_signal = sub_signal[:,:,:,int(250+self.trigger_est*self.fs):int(250+self.trigger_est*self.fs+4.5*self.fs-1)] #Onset + visual delay
             preproc_signal = self.filterSignal(sub_signal)
             preproc_signal = self.sliceTemporal(preproc_signal)
             preproc_signal = np.expand_dims(preproc_signal,axis = 0)
@@ -148,7 +137,6 @@ class BenchmarkHandler(DataHandler):
         """
         x = np.swapaxes(data,1,3)
         x = np.swapaxes(x,2,4)
-        #x = x.reshape((-1,64,self.num_samples))
         chn_list = [47,53,54,55,56,57,60,61,62]
         return x[:,:,:,chn_list,:]
 
@@ -158,22 +146,15 @@ class BenchmarkHandler(DataHandler):
         where d is the window size (in seconds). The estimulus
         triggering was determined in 0.64
         """
-        low_bound   = int(self.trigger_est*self.fs)
-        high_bound  = int((self.trigger_est+self.time_window)*self.fs)
-        if self.time_window in self.check_length:
-            low_bound   = math.ceil(self.trigger_est*self.fs)
-        else:
-            low_bound   = int(self.trigger_est*self.fs)
-        return data[:,low_bound:high_bound,:,:]
+        return data[:,:int(self.time_window*self.fs),:,:]        
 
     def getAllSubjectsData(self):
-
         base_y  = np.mgrid[0:self.classes,0:self.trials][0].flatten()
-
         # Get train data
         train_x = np.zeros((self.num_subjects,64,self.num_samples,self.classes,self.trials))
         for sub in range(self.num_subjects):
             sub_signal = self.getSubjectData(sub + 1)
+            sub_signal = sub_signal[:,int(125+self.trigger_est*self.fs):int(125+self.trigger_est*self.fs+5*self.fs-1),:,:] #Onset + visual delay
             preproc_signal = self.filterSignal(sub_signal)
             preproc_signal = self.sliceTemporal(preproc_signal)
             preproc_signal = np.expand_dims(preproc_signal,axis = 0)

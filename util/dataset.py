@@ -6,8 +6,8 @@ def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
                             trials,classes,device,args,
                             split = 0.8, shuffle = True, fs = 250, fb = False, bands = 'all'):
     
-    # Takes non-target subjects and target sub
-    subs_list = [i for i in range(num_subs)] #TODO: Still to check for Benchmark
+    # Takes non-target subjects and target sub 
+    subs_list = [i for i in range(num_subs)]
     subs_list.remove(subject-1)
     
     train_x = train_X[subs_list,...]
@@ -17,7 +17,7 @@ def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
     train_y = train_Y[trials*classes:] 
     test_y  = train_Y[:trials*classes]
 
-    print(bands)
+    print(f'Data from band #{bands}')
     if fb:
         fb_train_x = np.swapaxes(filterbank(fs,train_x),0,1)
         fb_test_x = np.swapaxes(filterbank(fs,test_x),0,1)
@@ -27,14 +27,6 @@ def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
         else:
             train_x = fb_train_x
             test_x = fb_test_x
-
-    # Dataset creation from numpy file to Torch class
-    # train_x = torch.Tensor(train_x)
-    # train_y = torch.Tensor(train_y).type(torch.int64)
-    # trainset   = torch.utils.data.TensorDataset(train_x, train_y)
-    # test_x = torch.Tensor(test_x)
-    # test_y = torch.Tensor(test_y).type(torch.int64)
-    # testset   = torch.utils.data.TensorDataset(test_x, test_y)
     
     train_x = torch.from_numpy(train_x).type(torch.float32)
     train_y = torch.from_numpy(train_y).type(torch.int64)
@@ -43,20 +35,23 @@ def trainSubjectIndependent(train_X,train_Y,subject,num_subs,
     test_y = torch.from_numpy(test_y).type(torch.int64)
     testset   = torch.utils.data.TensorDataset(test_x, test_y)
     
-    # it includes train-val-test split under sub.independent scheme 
-    train_size = int(split * len(trainset))
-    valid_size = len(trainset) - train_size
-    trainset, validset = torch.utils.data.random_split(trainset, [train_size, valid_size])
-    
-    #
+    if split != 1.0:
+        # it includes train-val-test split under sub.independent scheme 
+        train_size = int(split * len(trainset))
+        valid_size = len(trainset) - train_size
+        trainset, validset = torch.utils.data.random_split(trainset, [train_size, valid_size])
+        
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=shuffle,
                                                num_workers=args.num_workers,pin_memory=args.pin_mem)
-    val_loader = torch.utils.data.DataLoader(validset, batch_size=args.batch_size,shuffle=shuffle,
-                                             num_workers=args.num_workers,pin_memory=args.pin_mem)
+    if split != 1.0:
+        val_loader = torch.utils.data.DataLoader(validset, batch_size=args.batch_size,shuffle=shuffle,
+                                                num_workers=args.num_workers,pin_memory=args.pin_mem) 
+    else:
+        val_loader = []
     test_loader= torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=shuffle,
                                              num_workers=args.num_workers,pin_memory=args.pin_mem)
 
-    return train_loader, val_loader, test_loader
+    return train_loader,val_loader,test_loader
 
 
 def filterbank(fs,X,num_subbands = 3):

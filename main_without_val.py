@@ -14,7 +14,7 @@ from util.engine import EarlyStopping,train_one_epoch,evaluate
 
 def get_args_parser():
     parser = argparse.ArgumentParser(
-        'SSVEPformer training and evaluation script', add_help=False)
+        'EfficientFormer training and evaluation script', add_help=False)
     parser.add_argument('--batch-size', default=128, type=int)
     parser.add_argument('--epochs', default=100, type=int)
 
@@ -87,9 +87,9 @@ def main(args):
     print(f"SSVEPformer: Training {args.model} net for {args.epochs} epochs/{args.batch_size} batch")
     test_accuracy = []
     for subject in range(params['Subs']):
-        data_loader_train, data_loader_val, data_loader_test = trainSubjectIndependent(train_x,train_y,subject+1,
-                                                                        params['Subs'],params['Trials'],params['Classes'],device,args,0.8,fs=params['Fs'])                           
-        # Build model and optimizer
+        data_loader_train, _, data_loader_test = trainSubjectIndependent(train_x,train_y,subject+1,
+                                                                        params['Subs'],params['Trials'],params['Classes'],device,args,1.0,fs=params['Fs'])                           
+        # Building model and optimizer
         match args.model:
             case 'ssvepformer':
                 model = SSVEPformer(params,args.signal_size)
@@ -104,7 +104,7 @@ def main(args):
             case 'f2ssvepformer_B':
                 model = fuzzyT2SSVEPformerB(params)
             case'f2ssvepformer_C':
-                model = fuzzyT2SSVEPformerC(params,args.signal_size)
+                model = fuzzyT2SSVEPformerC(params)
         model.apply(initialize_weights)
         model.to(device)
         criterion = torch.nn.CrossEntropyLoss()
@@ -115,26 +115,22 @@ def main(args):
         # Loop
         start_time = time.time()
         train_losses = []
-        valid_losses = []
         print(f'Subject {subject + 1}')
         for epoch in range(args.epochs):
             train_loss = train_one_epoch(data_loader_train,
                                         model, criterion, 
                                         optimizer, device)
-            valid_loss,_ = evaluate(data_loader_val, model, criterion, device)
             train_losses.append(train_loss/len(data_loader_train))
-            valid_losses.append(valid_loss/len(data_loader_val))
-            print(f'Epoch {epoch}/{args.epochs} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
+            print(f'Epoch {epoch}/{args.epochs} / train loss:{train_losses[-1]:.4f}')
             if args.early_stopping:
-                early_stopping(valid_loss)
+                early_stopping(train_loss)
                 if early_stopping.early_stop:
                     break
 
+
         plt.plot(train_losses)
-        plt.plot(valid_losses)
         plt.savefig(f'plots/{args.model}_S{subject}_{args.signal_size}s.png')
         plt.close()
-
 
         # Reports    
         total_time = time.time() - start_time

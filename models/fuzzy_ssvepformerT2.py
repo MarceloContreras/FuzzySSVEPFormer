@@ -33,7 +33,7 @@ class LowerGaussMembFunc(torch.nn.Module):
 class fuzzyT2_chn_MLP_module(nn.Module):
     def __init__(self, dropout, channels, length):
       super().__init__()
-      self.norm       = nn.LayerNorm([2*channels,length])
+      self.norm       = nn.LayerNorm(length)
       self.linear     = nn.Linear(length,length)
       self.dropout    = nn.Dropout(dropout)
 
@@ -79,7 +79,7 @@ class fuzzyT2MLP_head(nn.Module):
         self.flatten = nn.Flatten()
         self.drop1   = nn.Dropout(dropout)
         self.dense1  = nn.Linear(2*channel*length,6*classes)
-        self.norm    = nn.LayerNorm([6*classes])
+        self.norm    = nn.LayerNorm(6*classes)
         self.drop2   = nn.Dropout(dropout)
         self.dense2  = nn.Linear(6*classes,classes)
 
@@ -118,7 +118,7 @@ class fuzzyT2MLP_head(nn.Module):
         rules_lambda_l = rules_lambda_l.squeeze(0)
         consequent_u = torch.mul(self.dense_consequent(x),rules_lambda_u)
         consequent_l = torch.mul(self.dense_consequent(x),rules_lambda_l)
-        output_fuzzy   = (1-F.sigmoid(self.beta))*(consequent_u)+F.sigmoid(self.beta)*consequent_l
+        output_fuzzy = (1-F.sigmoid(self.beta))*(consequent_u)+F.sigmoid(self.beta)*consequent_l
         x = self.dense2(x) + output_fuzzy
         return x
     
@@ -137,7 +137,7 @@ class fuzzyT2Encoder(nn.Module):
 
 # Variant A
 class fuzzyT2SSVEPformerA(nn.Module):
-    def __init__(self, params, dropout = 0.5):
+    def __init__(self, params, signal_size, dropout = 0.5):
       super().__init__()
       self.nfft = round(params['Fs']/params['Resolution']) 
       self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
@@ -161,7 +161,7 @@ class fuzzyT2SSVEPformerA(nn.Module):
 
 # Variant B
 class fuzzyT2SSVEPformerB(nn.Module):
-    def __init__(self, params, dropout = 0.5):
+    def __init__(self, params, signal_size, dropout = 0.5):
       super().__init__()
       self.nfft = round(params['Fs']/params['Resolution']) 
       self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
@@ -173,10 +173,10 @@ class fuzzyT2SSVEPformerB(nn.Module):
       self.MLP = MLP_head(params['Channels'], params['Classes'], length, dropout)
 
     def forward(self,x):
-      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)
+      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)/(self.nfft/2)
       real = fft_im.real
       imag = fft_im.imag
-      x = torch.cat((real[...,self.fft_start:self.fft_end],imag[...,self.fft_start:self.fft_end]), -1)
+      x = torch.cat((real[...,self.fft_start:self.fft_end-1],imag[...,self.fft_start:self.fft_end-1]), -1)
       x = self.chn_combination(x)
       x = self.SSVEPencoder(x)
       x = self.MLP(x)
@@ -185,7 +185,7 @@ class fuzzyT2SSVEPformerB(nn.Module):
 
 # Variant C
 class fuzzyT2SSVEPformerC(nn.Module):
-    def __init__(self, params, dropout = 0.5):
+    def __init__(self, params, signal_size, dropout = 0.5):
       super().__init__()
       self.nfft = round(params['Fs']/params['Resolution']) 
       self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
@@ -197,10 +197,10 @@ class fuzzyT2SSVEPformerC(nn.Module):
       self.MLP = fuzzyT2MLP_head(params['Channels'], params['Classes'], length, dropout)
 
     def forward(self,x):
-      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)
+      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)/(self.nfft/2)
       real = fft_im.real
       imag = fft_im.imag
-      x = torch.cat((real[...,self.fft_start:self.fft_end],imag[...,self.fft_start:self.fft_end]), -1)
+      x = torch.cat((real[...,self.fft_start:self.fft_end-1],imag[...,self.fft_start:self.fft_end-1]), -1)
       x = self.chn_combination(x)
       x = self.SSVEPencoder(x)
       x = self.MLP(x)

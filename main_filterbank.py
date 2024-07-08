@@ -7,13 +7,14 @@ import csv
 import os
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
+import matplotlib.pyplot as plt 
 from models import *
 from util import NakanishiHandler,BenchmarkHandler,UTECHandler,trainSubjectIndependent,seed_everything
 from util.engine import EarlyStopping,train_one_epoch,evaluate
 
 def get_args_parser():
     parser = argparse.ArgumentParser(
-        'EfficientFormer training and evaluation script', add_help=False)
+        'SSVEPformer training and evaluation script', add_help=False)
     parser.add_argument('--batch-size', default=128, type=int)
     parser.add_argument('--epochs', default=100, type=int)
 
@@ -30,15 +31,18 @@ def get_args_parser():
                         help='learning rate (default: 1e-3)')
     parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                         help='SGD momentum (default: 0.9)')
-    parser.add_argument('--weight-decay', type=float, default=0.001,
+    parser.add_argument('--weight-decay', type=float, default=0.0001,
                         help='weight decay (default: 1e-3)')
+    parser.add_argument("--early-stopping" , default = False,
+                        help = "Actives early stopping in training", action='store_true')
+    parser.add_argument("--patience",default = 20, type=int)
 
     # Dataset parameters
-    parser.add_argument('--data_path', default='datasets/2015_Nakanishi_SSVEP_database', type=str,
+    parser.add_argument('--data_path', default='datasets/Noisy-UTEC', type=str,
                         help='dataset path')
-    parser.add_argument('--params_path', default='datasets/Nakanishi.yaml', type=str,
+    parser.add_argument('--params_path', default='datasets/UTEC.yaml', type=str,
                         help='Parameter dataset path')
-    parser.add_argument('--dataset', default='NAKANISHI', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
+    parser.add_argument('--dataset', default='UTEC', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
                         type=str, help='Image Net dataset path')
     parser.add_argument('--output_dir', default='results',
                         help='path where to save, empty for no saving')
@@ -84,6 +88,7 @@ def main(args):
     test_accuracy = []
     for subject in range(params['Subs']):
         subnets = []
+        
         # Training of subnets: 
         for filter in range(3):
             data_loader_train, data_loader_val, data_loader_test = trainSubjectIndependent(train_x,train_y,subject+1,
@@ -104,7 +109,7 @@ def main(args):
                 case'f2ssvepformer_C':
                     model = fuzzyT2SSVEPformerC(params)
 
-            model.apply(init_normal)
+            model.apply(initialize_weights)
             model.to(device)
             criterion = torch.nn.CrossEntropyLoss()
             optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
@@ -128,24 +133,31 @@ def main(args):
             print('Training time {}'.format(total_time_str))
             subnets.append(model)
 
+        # Training essamble net with all frequency bands
         data_loader_train, data_loader_val, data_loader_test = trainSubjectIndependent(train_x,train_y,subject+1,
-                                                                            params['Subs'],params['Trials'],params['Classes'],args,fs = params['Fs'],fb = True,bands = 'all')        
+                                                                            params['Subs'],params['Trials'],params['Classes'],device,args,fs = params['Fs'],fb = True,bands = 'all')        
         model = FBSSVEPformer(subnets[0],subnets[1],subnets[2],params['Classes'])
         model.to(device)
         criterion = torch.nn.CrossEntropyLoss()
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        if args.early_stopping:
+            early_stopping = EarlyStopping(patience=args.patience)
 
         train_losses = []
         valid_losses = []
         print(f'Subject {subject + 1}')
-        for epoch in range(50):
+        for epoch in range(500):
             train_loss = train_one_epoch(data_loader_train,
                                         model, criterion, 
                                         optimizer, device)
             valid_loss,_ = evaluate(data_loader_val, model, criterion, device)
             train_losses.append(train_loss/len(data_loader_train))
             valid_losses.append(valid_loss/len(data_loader_val))
-            print(f'Epoch {epoch}/{50} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
+            print(f'Epoch {epoch}/{500} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
+            if args.early_stopping:
+                early_stopping(valid_loss)
+                if early_stopping.early_stop:
+                    break
 
         _,test_acc = evaluate(data_loader_test, model, criterion, device)
         test_accuracy.append(round(test_acc,4))

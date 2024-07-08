@@ -5,5 +5,6 @@ results
 datasets/2015_Nakanishi_SSVEP_database
 datasets/Tsinghua
 datasets/Noisy-UTEC
-evaluation.sh
+eval.sh
 wilcoxon.py
+plots
