@@ -48,7 +48,7 @@ class DataHandler(object):
         where d is the window size (in seconds). The estimulus
         triggering was determined in 0.135
         """
-        return data[:,:,:int(self.time_window*self.fs),:]
+        return data[:,:,:round(self.time_window*self.fs),:]
     
     def reorderEEGmatrix(self,data):
         """
@@ -94,7 +94,7 @@ class UTECHandler(DataHandler):
         where d is the window size (in seconds). The estimulus
         triggering was determined in 0.135
         """
-        return data[:,:,:,:int(self.time_window*self.fs)]
+        return data[:,:,:,:round(self.time_window*self.fs)]
 
     def filterSignal(self,data):
         # Notch filterind to remove signal noise 60 Hz
@@ -146,7 +146,7 @@ class BenchmarkHandler(DataHandler):
         where d is the window size (in seconds). The estimulus
         triggering was determined in 0.64
         """
-        return data[:,:int(self.time_window*self.fs),:,:]        
+        return data[:,:round(self.time_window*self.fs),:,:]        
 
     def getAllSubjectsData(self):
         base_y  = np.mgrid[0:self.classes,0:self.trials][0].flatten()

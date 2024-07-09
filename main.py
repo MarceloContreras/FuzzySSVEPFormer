@@ -23,7 +23,7 @@ def get_args_parser():
                                                                              'f1ssvepformer_A', 'f1ssvepformer_B','f1ssvepformer_C',
                                                                              'f2ssvepformer_A', 'f2ssvepformer_B','f2ssvepformer_C'],
                         help='Name of model to train')
-    parser.add_argument('--signal_size', default=1.0,
+    parser.add_argument('--signal_size', default=0.1,
                         type=float, help='signal sample size')
 
     # Optimizer parameters

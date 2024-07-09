@@ -142,11 +142,15 @@ class fuzzyT2SSVEPformerA(nn.Module):
       self.nfft = round(params['Fs']/params['Resolution']) 
       self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
       self.fft_end = int(round(params['Filt.high_cut']/params['Resolution'])) + 1
-      length = 2*(self.fft_end-self.fft_start)
+      length = int(2*(self.fft_end-self.fft_start-1))
 
       self.chn_combination = Chnl_combination(dropout, params['Channels'], length)
       self.SSVEPencoder = Encoder(dropout, params['Channels'], length)
       self.MLP = fuzzyT2MLP_head(params['Channels'], params['Classes'], length, dropout)
+
+      for m in self.modules():
+        if isinstance(m, (nn.Conv1d, nn.Linear)):
+            nn.init.normal_(m.weight, mean=0.0, std=0.01)
 
     def forward(self,x):
       fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)
@@ -166,11 +170,15 @@ class fuzzyT2SSVEPformerB(nn.Module):
       self.nfft = round(params['Fs']/params['Resolution']) 
       self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
       self.fft_end = int(round(params['Filt.high_cut']/params['Resolution'])) + 1
-      length = 2*(self.fft_end-self.fft_start)
+      length = int(2*(self.fft_end-self.fft_start-1))
 
       self.chn_combination = Chnl_combination(dropout, params['Channels'], length)
       self.SSVEPencoder = fuzzyT2Encoder(dropout, params['Channels'], length)
       self.MLP = MLP_head(params['Channels'], params['Classes'], length, dropout)
+
+      for m in self.modules():
+        if isinstance(m, (nn.Conv1d, nn.Linear)):
+            nn.init.normal_(m.weight, mean=0.0, std=0.01)
 
     def forward(self,x):
       fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)/(self.nfft/2)
@@ -190,11 +198,15 @@ class fuzzyT2SSVEPformerC(nn.Module):
       self.nfft = round(params['Fs']/params['Resolution']) 
       self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
       self.fft_end = int(round(params['Filt.high_cut']/params['Resolution'])) + 1
-      length = 2*(self.fft_end-self.fft_start)
+      length = int(2*(self.fft_end-self.fft_start-1))
       
       self.chn_combination = Chnl_combination(dropout, params['Channels'], length)
       self.SSVEPencoder = fuzzyT2Encoder(dropout, params['Channels'], length)
       self.MLP = fuzzyT2MLP_head(params['Channels'], params['Classes'], length, dropout)
+
+      for m in self.modules():
+        if isinstance(m, (nn.Conv1d, nn.Linear)):
+            nn.init.normal_(m.weight, mean=0.0, std=0.01)
 
     def forward(self,x):
       fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)/(self.nfft/2)
@@ -207,6 +219,22 @@ class fuzzyT2SSVEPformerC(nn.Module):
       return x
 
 
-def init_normal(m):
-    if type(m) == nn.Linear or type(m) == nn.Conv1d:
-        nn.init.normal_(m.weight,0,0.01)
+def initialize_weights(m):
+    if isinstance(m, nn.Conv2d):
+        m.weight.data.normal_(0, 0.01)
+        m.bias.data.zero_()
+
+    elif isinstance(m, nn.ConvTranspose2d):
+        m.weight.data.normal_(0, 0.01)
+        m.bias.data.zero_()
+
+    elif isinstance(m, nn.LSTM):
+        for name, param in m.named_parameters():
+            if name.startswith("weight"):
+                nn.init.xavier_uniform_(param)
+            else:
+                nn.init.zeros_(param)
+
+    elif isinstance(m, nn.Linear):
+        m.weight.data.normal_(0, 0.01)
+        m.bias.data.zero_()
