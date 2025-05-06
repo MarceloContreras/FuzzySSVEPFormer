@@ -144,9 +144,7 @@ class fuzzySSVEPformerC(nn.Module):
       self.fft_start = int(round(params['Filt.low_cut']/params['Resolution']))
       self.fft_end = int(round(params['Filt.high_cut']/params['Resolution'])) + 1
       length = int(2*(self.fft_end-self.fft_start-1))
-      # length = 2*round(signal_size*params['Fs'])
-      # self.nfft = length
-
+      
       self.chn_combination = Chnl_combination(dropout, params['Channels'], length)
       self.SSVEPencoder = fuzzyEncoder(dropout, params['Channels'], length)
       self.MLP = fuzzyMLP_head(params['Channels'], params['Classes'], length, dropout)
@@ -156,10 +154,6 @@ class fuzzySSVEPformerC(nn.Module):
             nn.init.normal_(m.weight, mean=0.0, std=0.01)
 
     def forward(self,x):
-      # fft_im = torch.fft.fft(x)/self.nfft
-      # real = fft_im.real
-      # imag = fft_im.imag
-      # x = torch.cat((real,imag), -1)
       fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)/(self.nfft/2)
       real = fft_im.real
       imag = fft_im.imag

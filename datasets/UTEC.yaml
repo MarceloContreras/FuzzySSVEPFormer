@@ -3,8 +3,8 @@
 #--------------------------------------------------------------------------------------------
 Filt.axis: -1
 Filt.order: 4
-Filt.low_cut: 8
-Filt.high_cut: 64
+Filt.low_cut: 4
+Filt.high_cut: 30
         
 #--------------------------------------------------------------------------------------------
 # Data parameters
@@ -12,7 +12,7 @@ Filt.high_cut: 64
 Fs: 250
 Subs: 10
 Trials: 15
-Trigger: 0.14 # Visual delay
+Trigger: 0.135 # Visual delay
 Classes: 4
 Channels: 3
 

@@ -8,6 +8,8 @@ import os
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import matplotlib.pyplot as plt
+
+from braindecode.models import EEGNetv4,EEGConformer
 from models import *
 from util import NakanishiHandler,BenchmarkHandler,UTECHandler,trainSubjectIndependent,seed_everything
 from util.engine import EarlyStopping,train_one_epoch,evaluate
@@ -21,9 +23,10 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--model', default='ssvepformer', type=str, choices=['ssvepformer', 
                                                                              'f1ssvepformer_A', 'f1ssvepformer_B','f1ssvepformer_C',
-                                                                             'f2ssvepformer_A', 'f2ssvepformer_B','f2ssvepformer_C'],
+                                                                             'f2ssvepformer_A', 'f2ssvepformer_B','f2ssvepformer_C',
+                                                                             'EEGNet','SSVEPNet','Conformer','Deformer'],
                         help='Name of model to train')
-    parser.add_argument('--signal_size', default=0.1,
+    parser.add_argument('--signal_size', default=1.0,
                         type=float, help='signal sample size')
 
     # Optimizer parameters
@@ -96,15 +99,26 @@ def main(args):
             case'f1ssvepformer_A':
                 model = fuzzySSVEPformerA(params,args.signal_size)
             case 'f1ssvepformer_B':
-                model = fuzzySSVEPformerB(params)
+                model = fuzzySSVEPformerB(params,args.signal_size)
             case'f1ssvepformer_C':
                 model = fuzzySSVEPformerC(params,args.signal_size)
             case 'f2ssvepformer_A':
-                model = fuzzyT2SSVEPformerA(params)
+                model = fuzzyT2SSVEPformerA(params,args.signal_size)
             case 'f2ssvepformer_B':
-                model = fuzzyT2SSVEPformerB(params)
+                model = fuzzyT2SSVEPformerB(params,args.signal_size)
             case'f2ssvepformer_C':
                 model = fuzzyT2SSVEPformerC(params,args.signal_size)
+            case 'EEGNet':
+                model = EEGNetv4(params['Channels'],params['Classes'],int(args.signal_size*params['Fs'])+25)
+            case 'SSVEPNet':
+                model = ESNet(params['Channels'],round(args.signal_size*params['Fs']),params['Classes'])
+            case 'Conformer':
+                model = Conformer(n_classes=params['Classes'],n_chan=params['Channels'],n_samples = round(args.signal_size*params['Fs']))
+            case 'Deformer':
+                model = Deformer(num_chan=params['Channels'], num_time=round(args.signal_size*params['Fs'])+25, temporal_kernel=11, num_kernel=64,
+                                num_classes=params['Classes'], depth=4, heads=16,
+                                mlp_dim=16, dim_head=16, dropout=0.5)
+
         model.apply(initialize_weights)
         model.to(device)
         criterion = torch.nn.CrossEntropyLoss()
@@ -131,10 +145,9 @@ def main(args):
                     break
 
         plt.plot(train_losses)
-        plt.plot(valid_losses)
+        # plt.plot(valid_losses)
         plt.savefig(f'plots/{args.model}_S{subject}_{args.signal_size}s.png')
         plt.close()
-
 
         # Reports    
         total_time = time.time() - start_time

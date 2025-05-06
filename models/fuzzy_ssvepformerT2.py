@@ -153,10 +153,10 @@ class fuzzyT2SSVEPformerA(nn.Module):
             nn.init.normal_(m.weight, mean=0.0, std=0.01)
 
     def forward(self,x):
-      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)
+      fft_im = torch.fft.fft(x, n = self.nfft, dim = -1)/(self.nfft/2)
       real = fft_im.real
       imag = fft_im.imag
-      x = torch.cat((real[...,self.fft_start:self.fft_end],imag[...,self.fft_start:self.fft_end]), -1)
+      x = torch.cat((real[...,self.fft_start:self.fft_end-1],imag[...,self.fft_start:self.fft_end-1]), -1)
       x = self.chn_combination(x)
       x = self.SSVEPencoder(x)
       x = self.MLP(x)

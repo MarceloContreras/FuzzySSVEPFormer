@@ -68,13 +68,16 @@ class DataHandler(object):
         train_x = np.zeros((self.num_subjects,self.classes,self.num_chn,self.num_samples,self.trials))
         for sub in range(self.num_subjects):
             sub_signal = self.getSubjectData(sub + 1)
-            sub_signal = sub_signal[:,:,int(38+self.trigger_est*self.fs):int(38+self.trigger_est*self.fs+4*self.fs-1),:] #Onset + visual delay
+            sub_signal = sub_signal[:,:,int(39+self.trigger_est*self.fs):int(38+self.trigger_est*self.fs+3*self.fs-1),:] #Onset + visual delay
             preproc_signal = self.filterSignal(sub_signal)
             preproc_signal = self.sliceTemporal(preproc_signal)
             preproc_signal = np.expand_dims(preproc_signal,axis = 0)
             train_x[sub,...] = preproc_signal
 
         train_x = self.reorderEEGmatrix(train_x)
+        dummy_train = np.random.normal(0,1,train_x.shape)
+        train_x = np.concatenate((train_x, dummy_train[...,:25]), axis=-1)
+        
         train_y = np.tile(base_y,self.num_subjects)
 
         return train_x,train_y
@@ -98,15 +101,15 @@ class UTECHandler(DataHandler):
 
     def filterSignal(self,data):
         # Notch filterind to remove signal noise 60 Hz
-        b_notch, a_notch = iirnotch(60.0, 7.5, self.fs)
-        y = filtfilt(b_notch, a_notch, data, axis = self.filt_axis)
+        # b_notch, a_notch = iirnotch(60.0, 7.5, self.fs)
+        # y = filtfilt(b_notch, a_notch, data, axis = self.filt_axis)
         
         # Butter bandpass filter
         nyq = 0.5 * self.fs
         low = self.lowfreq_cut / nyq
         high = self.highfreq_cut / nyq
         b, a = butter(self.filt_order, [low, high], btype='band')
-        y = filtfilt(b, a, y, axis = self.filt_axis)
+        y = filtfilt(b, a, data, axis = self.filt_axis)
         return y
 
     def getAllSubjectsData(self):
@@ -117,11 +120,21 @@ class UTECHandler(DataHandler):
         train_x = np.zeros((self.num_subjects,self.classes,self.trials,self.num_chn,self.num_samples))
         for sub in range(self.num_subjects):
             sub_signal = self.getSubjectData(sub + 1)
-            sub_signal = sub_signal[:,:,:,int(250+self.trigger_est*self.fs):int(250+self.trigger_est*self.fs+4.5*self.fs-1)] #Onset + visual delay
+            sub_signal = sub_signal[:,:,:,int(250+self.trigger_est*self.fs):int(250+self.trigger_est*self.fs+4*self.fs-1)] #Onset + visual delay
+            
+            # Remove mean and then normalize between [-1,1]
+            # sub_signal = sub_signal - np.expand_dims(sub_signal.mean(axis=-1),-1) 
+            # min_val = np.expand_dims(np.min(sub_signal,axis=-1),-1)
+            # max_val = np.expand_dims(np.max(sub_signal,axis=-1),-1)
+            # normalized_sub_signal =  2 * (sub_signal - min_val) / (max_val - min_val) - 1
+                        
             preproc_signal = self.filterSignal(sub_signal)
             preproc_signal = self.sliceTemporal(preproc_signal)
             preproc_signal = np.expand_dims(preproc_signal,axis = 0)
             train_x[sub,...] = preproc_signal
+
+        dummy_train = np.random.normal(0,1,train_x.shape)
+        train_x = np.concatenate((train_x, dummy_train[...,:25]), axis=-1)
 
         train_y = np.tile(base_y,self.num_subjects)
         return train_x,train_y
@@ -154,7 +167,7 @@ class BenchmarkHandler(DataHandler):
         train_x = np.zeros((self.num_subjects,64,self.num_samples,self.classes,self.trials))
         for sub in range(self.num_subjects):
             sub_signal = self.getSubjectData(sub + 1)
-            sub_signal = sub_signal[:,int(125+self.trigger_est*self.fs):int(125+self.trigger_est*self.fs+5*self.fs-1),:,:] #Onset + visual delay
+            sub_signal = sub_signal[:,int(125+self.trigger_est*self.fs):int(125+self.trigger_est*self.fs+4.5*self.fs-1),:,:] #Onset + visual delay
             preproc_signal = self.filterSignal(sub_signal)
             preproc_signal = self.sliceTemporal(preproc_signal)
             preproc_signal = np.expand_dims(preproc_signal,axis = 0)

@@ -146,14 +146,14 @@ def main(args):
         train_losses = []
         valid_losses = []
         print(f'Subject {subject + 1}')
-        for epoch in range(500):
+        for epoch in range(20):
             train_loss = train_one_epoch(data_loader_train,
                                         model, criterion, 
                                         optimizer, device)
             valid_loss,_ = evaluate(data_loader_val, model, criterion, device)
             train_losses.append(train_loss/len(data_loader_train))
             valid_losses.append(valid_loss/len(data_loader_val))
-            print(f'Epoch {epoch}/{500} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
+            print(f'Epoch {epoch}/{20} / train loss:{train_losses[-1]:.4f} / val loss:{valid_losses[-1]:.4f}')
             if args.early_stopping:
                 early_stopping(valid_loss)
                 if early_stopping.early_stop:
