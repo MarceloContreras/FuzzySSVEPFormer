@@ -99,19 +99,6 @@ class UTECHandler(DataHandler):
         """
         return data[:,:,:,:round(self.time_window*self.fs)]
 
-    def filterSignal(self,data):
-        # Notch filterind to remove signal noise 60 Hz
-        # b_notch, a_notch = iirnotch(60.0, 7.5, self.fs)
-        # y = filtfilt(b_notch, a_notch, data, axis = self.filt_axis)
-        
-        # Butter bandpass filter
-        nyq = 0.5 * self.fs
-        low = self.lowfreq_cut / nyq
-        high = self.highfreq_cut / nyq
-        b, a = butter(self.filt_order, [low, high], btype='band')
-        y = filtfilt(b, a, data, axis = self.filt_axis)
-        return y
-
     def getAllSubjectsData(self):
 
         base_y  = np.mgrid[0:self.classes,0:self.trials][0].flatten()
@@ -121,13 +108,6 @@ class UTECHandler(DataHandler):
         for sub in range(self.num_subjects):
             sub_signal = self.getSubjectData(sub + 1)
             sub_signal = sub_signal[:,:,:,int(250+self.trigger_est*self.fs):int(250+self.trigger_est*self.fs+4*self.fs-1)] #Onset + visual delay
-            
-            # Remove mean and then normalize between [-1,1]
-            # sub_signal = sub_signal - np.expand_dims(sub_signal.mean(axis=-1),-1) 
-            # min_val = np.expand_dims(np.min(sub_signal,axis=-1),-1)
-            # max_val = np.expand_dims(np.max(sub_signal,axis=-1),-1)
-            # normalized_sub_signal =  2 * (sub_signal - min_val) / (max_val - min_val) - 1
-                        
             preproc_signal = self.filterSignal(sub_signal)
             preproc_signal = self.sliceTemporal(preproc_signal)
             preproc_signal = np.expand_dims(preproc_signal,axis = 0)
@@ -138,6 +118,7 @@ class UTECHandler(DataHandler):
 
         train_y = np.tile(base_y,self.num_subjects)
         return train_x,train_y
+
 
 class BenchmarkHandler(DataHandler):
     def __init__(self, params, time_window, path):
@@ -168,6 +149,61 @@ class BenchmarkHandler(DataHandler):
         for sub in range(self.num_subjects):
             sub_signal = self.getSubjectData(sub + 1)
             sub_signal = sub_signal[:,int(125+self.trigger_est*self.fs):int(125+self.trigger_est*self.fs+4.5*self.fs-1),:,:] #Onset + visual delay
+            preproc_signal = self.filterSignal(sub_signal)
+            preproc_signal = self.sliceTemporal(preproc_signal)
+            preproc_signal = np.expand_dims(preproc_signal,axis = 0)
+            train_x[sub,...] = preproc_signal
+
+        train_x = self.reorderEEGmatrix(train_x)
+        train_y = np.tile(base_y,self.num_subjects)
+
+        return train_x,train_y
+
+
+class WearableHandler(DataHandler):
+    def __init__(self, params, time_window, path):
+        super().__init__(params, time_window, path)
+
+    def getSubjectData(self,num_sub):
+
+        if num_sub < 10:
+            file_name = 'S00{:n}.mat'.format(num_sub)
+        elif num_sub < 100:
+            file_name = 'S0{:n}.mat'.format(num_sub)
+        else:
+            file_name = 'S{:n}.mat'.format(num_sub)
+
+        sub_path = os.path.join(self.path, file_name)
+        loaded_mat = sio.loadmat(sub_path)
+        
+        return loaded_mat['data'][:,:,1,:,:] # Taking wet electrodes only
+
+    def reorderEEGmatrix(self,data):
+        """
+        Modifies the EEG mat to fit for network input.
+        Assumes a initial shape of (subject,chn,samples,trial,classes)
+        and gives an array-alike (subject,class,trial,chn,samples)
+        """
+        x = np.swapaxes(data,1,4)  
+        x = np.swapaxes(x,2,3)  
+        x = np.swapaxes(x,3,4)  
+        return x 
+
+    def sliceTemporal(self,data):
+        """
+        Slices the signal to temporal section of [0.64, d + 0.64]
+        where d is the window size (in seconds). The estimulus
+        triggering was determined in 0.64
+        """
+        return data[:,:round(self.time_window*self.fs),:,:]        
+
+    def getAllSubjectsData(self):
+        base_y  = np.mgrid[0:self.classes,0:self.trials][0].flatten()
+        # Get train data
+        train_x = np.zeros((self.num_subjects,self.num_chn,self.num_samples,self.trials,self.classes))
+        for sub in range(self.num_subjects):
+            sub_signal = self.getSubjectData(sub + 1)
+            sub_signal = sub_signal[:,int(125+self.trigger_est*self.fs):int(125+self.trigger_est*self.fs+2.0*self.fs),:,:] #Onset + visual delay
             preproc_signal = self.filterSignal(sub_signal)
             preproc_signal = self.sliceTemporal(preproc_signal)
             preproc_signal = np.expand_dims(preproc_signal,axis = 0)

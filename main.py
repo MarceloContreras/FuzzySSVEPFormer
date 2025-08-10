@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 from braindecode.models import EEGNetv4,EEGConformer
 from models import *
-from util import NakanishiHandler,BenchmarkHandler,UTECHandler,trainSubjectIndependent,seed_everything
+from util import NakanishiHandler,BenchmarkHandler,UTECHandler,WearableHandler,trainSubjectIndependent,seed_everything
 from util.engine import EarlyStopping,train_one_epoch,evaluate
 
 def get_args_parser():
@@ -45,7 +45,7 @@ def get_args_parser():
                         help='dataset path')
     parser.add_argument('--params_path', default='datasets/Nakanishi.yaml', type=str,
                         help='Parameter dataset path')
-    parser.add_argument('--dataset', default='NAKANISHI', choices=['NAKANISHI', 'BENCHMARK', 'UTEC'],
+    parser.add_argument('--dataset', default='NAKANISHI', choices=['NAKANISHI', 'BENCHMARK', 'UTEC', 'WEARABLE'],
                         type=str, help='Image Net dataset path')
     parser.add_argument('--output_dir', default='results',
                         help='path where to save, empty for no saving')
@@ -84,6 +84,8 @@ def main(args):
             datahandler = BenchmarkHandler(params,args.signal_size,args.data_path)
         case 'UTEC':
             datahandler = UTECHandler(params,args.signal_size,args.data_path)
+        case 'WEARABLE':
+            datahandler = WearableHandler(params,args.signal_size,args.data_path)
     train_x,train_y = datahandler.getAllSubjectsData()
 
     # Main training/validation and testing loop
@@ -145,7 +147,7 @@ def main(args):
                     break
 
         plt.plot(train_losses)
-        # plt.plot(valid_losses)
+        plt.plot(valid_losses)
         plt.savefig(f'plots/{args.model}_S{subject}_{args.signal_size}s.png')
         plt.close()
 

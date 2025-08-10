@@ -4,6 +4,7 @@ util/__pycache__
 results
 datasets/2015_Nakanishi_SSVEP_database
 datasets/Tsinghua
+datasets/Wearable
 datasets/Noisy-UTEC
 eval.sh
 wilcoxon.py
