@@ -195,10 +195,12 @@ def main(args):
 
             X_latent, Y_latent_space = get_latent_space(data_loader_test, model, device)
             np.save(
-                f"latent_space/X_{args.model}_sub{args.sub}_t{time_length}", X_latent
+                f"latent_space/X_{args.model}_{time_length}s_{args.dataset}_S{args.sub+1}",
+                X_latent,
             )
+
             np.save(
-                f"latent_space/Y_{args.model}_sub{args.sub}_t{time_length}",
+                f"latent_space/Y_{args.model}_{time_length}s_{args.dataset}_S{args.sub+1}",
                 Y_latent_space,
             )
 
@@ -241,11 +243,12 @@ def main(args):
 
             X_latent, Y_latent_space = get_latent_space(data_loader_test, model, device)
             np.save(
-                f"latent_space/X_{args.model}_sub{args.sub}_t{args.signal_size}_n{noise}",
+                f"latent_space/X_{args.model}_{args.signal_size}s_{args.dataset}_S{args.sub+1}_n{noise}",
                 X_latent,
             )
+
             np.save(
-                f"latent_space/Y_{args.model}_sub{args.sub}_t{args.signal_size}_n{noise}",
+                f"latent_space/Y_{args.model}_{args.signal_size}s_{args.dataset}_S{args.sub+1}_n{noise}",
                 Y_latent_space,
             )
 
