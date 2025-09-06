@@ -9,9 +9,9 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
-from braindecode.models import EEGNetv4,EEGConformer
+from braindecode.models import EEGNetv4
 from models import *
-from util import NakanishiHandler,BenchmarkHandler,UTECHandler,WearableHandler,trainSubjectIndependent,seed_everything
+from util import NakanishiHandler,BenchmarkHandler,UTECHandler,WearableHandlerDry,WearableHandlerWet,trainSubjectIndependent,seed_everything
 from util.engine import EarlyStopping,train_one_epoch,evaluate
 
 def get_args_parser():
@@ -45,16 +45,22 @@ def get_args_parser():
                         help='dataset path')
     parser.add_argument('--params_path', default='datasets/Nakanishi.yaml', type=str,
                         help='Parameter dataset path')
-    parser.add_argument('--dataset', default='NAKANISHI', choices=['NAKANISHI', 'BENCHMARK', 'UTEC', 'WEARABLE'],
+    parser.add_argument('--dataset', default='NAKANISHI', choices=['NAKANISHI', 'BENCHMARK', 'UTEC', 'WEARABLE_DRY', 'WEARABLE_WET'],
                         type=str, help='Image Net dataset path')
     parser.add_argument('--output_dir', default='results',
                         help='path where to save, empty for no saving')
+    
+    # Further config
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
     parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument('--pin-mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.add_argument('--no-pin-mem', action='store_false', dest='pin_mem',
+                        help='')
+    parser.add_argument('--plot', action='store_true', default = False,
+                        help='')
+    parser.add_argument('--save_model', action='store_true', default = False,
                         help='')
     parser.set_defaults(pin_mem=True)
     return parser
@@ -84,8 +90,10 @@ def main(args):
             datahandler = BenchmarkHandler(params,args.signal_size,args.data_path)
         case 'UTEC':
             datahandler = UTECHandler(params,args.signal_size,args.data_path)
-        case 'WEARABLE':
-            datahandler = WearableHandler(params,args.signal_size,args.data_path)
+        case 'WEARABLE_WET':
+            datahandler = WearableHandlerWet(params,args.signal_size,args.data_path)
+        case 'WEARABLE_DRY':
+            datahandler = WearableHandlerDry(params,args.signal_size,args.data_path)
     train_x,train_y = datahandler.getAllSubjectsData()
 
     # Main training/validation and testing loop
@@ -146,10 +154,22 @@ def main(args):
                 if early_stopping.early_stop:
                     break
 
-        plt.plot(train_losses)
-        plt.plot(valid_losses)
-        plt.savefig(f'plots/{args.model}_S{subject}_{args.signal_size}s.png')
-        plt.close()
+        if args.plot:
+            plt.plot(train_losses)
+            plt.plot(valid_losses)
+            plt.savefig(f'plots/{args.model}_S{subject}_{args.signal_size}s.png')
+            plt.close()
+
+        if args.save_model:
+            # Check if folder exists, otherwise create it
+            weights_path = "weights"
+            if not os.path.exists(weights_path):
+                os.makedirs(weights_path)
+
+            # Save model weights
+            model_name = f"{args.model}_{args.signal_size:.1f}s_{args.dataset}_S{subject+1}.pth"
+            save_path = os.path.join(weights_path, model_name)
+            torch.save(model.state_dict(), save_path)
 
         # Reports    
         total_time = time.time() - start_time

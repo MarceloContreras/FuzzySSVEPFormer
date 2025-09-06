@@ -160,7 +160,7 @@ class BenchmarkHandler(DataHandler):
         return train_x,train_y
 
 
-class WearableHandler(DataHandler):
+class WearableHandlerWet(DataHandler):
     def __init__(self, params, time_window, path):
         super().__init__(params, time_window, path)
 
@@ -176,7 +176,7 @@ class WearableHandler(DataHandler):
         sub_path = os.path.join(self.path, file_name)
         loaded_mat = sio.loadmat(sub_path)
         
-        return loaded_mat['data'][:,:,1,:,:] # Taking wet electrodes only
+        return loaded_mat['data'][:,:,1,:,:] # Taking Wet electrodes only
 
     def reorderEEGmatrix(self,data):
         """
@@ -213,3 +213,21 @@ class WearableHandler(DataHandler):
         train_y = np.tile(base_y,self.num_subjects)
 
         return train_x,train_y
+    
+class WearableHandlerDry(WearableHandlerWet):
+    def __init__(self, params, time_window, path):
+        super().__init__(params, time_window, path)
+
+    def getSubjectData(self,num_sub):
+
+        if num_sub < 10:
+            file_name = 'S00{:n}.mat'.format(num_sub)
+        elif num_sub < 100:
+            file_name = 'S0{:n}.mat'.format(num_sub)
+        else:
+            file_name = 'S{:n}.mat'.format(num_sub)
+
+        sub_path = os.path.join(self.path, file_name)
+        loaded_mat = sio.loadmat(sub_path)
+        
+        return loaded_mat['data'][:,:,0,:,:] # Taking dry electrodes only

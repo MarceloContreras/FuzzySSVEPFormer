@@ -5,6 +5,8 @@ results
 datasets/2015_Nakanishi_SSVEP_database
 datasets/Tsinghua
 datasets/Wearable
+datasets/Wearable_split
+datasets/BETA
 datasets/Noisy-UTEC
 eval.sh
 wilcoxon.py
