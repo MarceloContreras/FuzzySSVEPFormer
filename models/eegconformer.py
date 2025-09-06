@@ -1,7 +1,8 @@
 import os
+
 gpus = [0]
-os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
-os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, gpus))
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, gpus))
 import math
 
 import torch.nn as nn
@@ -14,8 +15,10 @@ from einops.layers.torch import Rearrange, Reduce
 from einops import rearrange
 
 from torch.backends import cudnn
+
 cudnn.benchmark = False
 cudnn.deterministic = True
+
 
 # Convolution module
 # use conv to capture local features, instead of postion embedding.
@@ -29,15 +32,18 @@ class PatchEmbedding(nn.Module):
             nn.Conv2d(40, 40, (n_chan, 1), (1, 1)),
             nn.BatchNorm2d(40),
             nn.ELU(),
-            nn.AvgPool2d((1, 75), (1, 15)),  # pooling acts as slicing to obtain 'patch' along the time dimension as in ViT
+            nn.AvgPool2d(
+                (1, 75), (1, 15)
+            ),  # pooling acts as slicing to obtain 'patch' along the time dimension as in ViT
             nn.Dropout(0.5),
         )
 
         self.projection = nn.Sequential(
-            nn.Conv2d(40, emb_size, (1, 1), stride=(1, 1)),  # transpose, conv could enhance fiting ability slightly
-            Rearrange('b e (h) (w) -> b (h w) e'),
+            nn.Conv2d(
+                40, emb_size, (1, 1), stride=(1, 1)
+            ),  # transpose, conv could enhance fiting ability slightly
+            Rearrange("b e (h) (w) -> b (h w) e"),
         )
-
 
     def forward(self, x: Tensor) -> Tensor:
         # x: batch, chan, time
@@ -63,7 +69,7 @@ class MultiHeadAttention(nn.Module):
         queries = rearrange(self.queries(x), "b n (h d) -> b h n d", h=self.num_heads)
         keys = rearrange(self.keys(x), "b n (h d) -> b h n d", h=self.num_heads)
         values = rearrange(self.values(x), "b n (h d) -> b h n d", h=self.num_heads)
-        energy = torch.einsum('bhqd, bhkd -> bhqk', queries, keys)  
+        energy = torch.einsum("bhqd, bhkd -> bhqk", queries, keys)
         if mask is not None:
             fill_value = torch.finfo(torch.float32).min
             energy.mask_fill(~mask, fill_value)
@@ -71,7 +77,7 @@ class MultiHeadAttention(nn.Module):
         scaling = self.emb_size ** (1 / 2)
         att = F.softmax(energy / scaling, dim=-1)
         att = self.att_drop(att)
-        out = torch.einsum('bhal, bhlv -> bhav ', att, values)
+        out = torch.einsum("bhal, bhlv -> bhav ", att, values)
         out = rearrange(out, "b h n d -> b n (h d)")
         out = self.projection(out)
         return out
@@ -101,29 +107,36 @@ class FeedForwardBlock(nn.Sequential):
 
 class GELU(nn.Module):
     def forward(self, input: Tensor) -> Tensor:
-        return input*0.5*(1.0+torch.erf(input/math.sqrt(2.0)))
+        return input * 0.5 * (1.0 + torch.erf(input / math.sqrt(2.0)))
 
 
 class TransformerEncoderBlock(nn.Sequential):
-    def __init__(self,
-                 emb_size,
-                 num_heads=10,
-                 drop_p=0.5,
-                 forward_expansion=4,
-                 forward_drop_p=0.5):
+    def __init__(
+        self,
+        emb_size,
+        num_heads=10,
+        drop_p=0.5,
+        forward_expansion=4,
+        forward_drop_p=0.5,
+    ):
         super().__init__(
-            ResidualAdd(nn.Sequential(
-                nn.LayerNorm(emb_size),
-                MultiHeadAttention(emb_size, num_heads, drop_p),
-                nn.Dropout(drop_p)
-            )),
-            ResidualAdd(nn.Sequential(
-                nn.LayerNorm(emb_size),
-                FeedForwardBlock(
-                    emb_size, expansion=forward_expansion, drop_p=forward_drop_p),
-                nn.Dropout(drop_p)
-            )
-            ))
+            ResidualAdd(
+                nn.Sequential(
+                    nn.LayerNorm(emb_size),
+                    MultiHeadAttention(emb_size, num_heads, drop_p),
+                    nn.Dropout(drop_p),
+                )
+            ),
+            ResidualAdd(
+                nn.Sequential(
+                    nn.LayerNorm(emb_size),
+                    FeedForwardBlock(
+                        emb_size, expansion=forward_expansion, drop_p=forward_drop_p
+                    ),
+                    nn.Dropout(drop_p),
+                )
+            ),
+        )
 
 
 class TransformerEncoder(nn.Sequential):
@@ -134,12 +147,12 @@ class TransformerEncoder(nn.Sequential):
 class ClassificationHead(nn.Sequential):
     def __init__(self, emb_size, n_classes, n_hidden):
         super().__init__()
-        
+
         # global average pooling
         self.clshead = nn.Sequential(
-            Reduce('b n e -> b e', reduction='mean'),
+            Reduce("b n e -> b e", reduction="mean"),
             nn.LayerNorm(emb_size),
-            nn.Linear(emb_size, n_classes)
+            nn.Linear(emb_size, n_classes),
         )
         self.fc = nn.Sequential(
             nn.Linear(n_hidden, 256),
@@ -148,29 +161,32 @@ class ClassificationHead(nn.Sequential):
             nn.Linear(256, 32),
             nn.ELU(),
             nn.Dropout(0.3),
-            nn.Linear(32, n_classes)
+            nn.Linear(32, n_classes),
         )
 
     def forward(self, x):
         x = x.contiguous().view(x.size(0), -1)
         out = self.fc(x)
-        #return x, out
+        # return x, out
         return out
 
 
 class Conformer(nn.Sequential):
-    def __init__(self, emb_size=40, depth=6, n_classes=4, n_chan=22, n_samples=256, **kwargs):
-        n_hidden = {int(256*1.0):440,
-                    int(256*0.9):360,
-                    int(256*0.8):320,
-                    int(256*0.7):240,
-                    int(256*0.6):160,
-                    int(256*0.5):80,
-                    int(256*0.4):40}
+    def __init__(
+        self, emb_size=40, depth=6, n_classes=4, n_chan=22, n_samples=256, **kwargs
+    ):
+        n_hidden = {
+            int(256 * 1.0): 440,
+            int(256 * 0.9): 360,
+            int(256 * 0.8): 320,
+            int(256 * 0.7): 240,
+            int(256 * 0.6): 160,
+            int(256 * 0.5): 80,
+            int(256 * 0.4): 40,
+        }
 
         super().__init__(
-
             PatchEmbedding(emb_size, n_chan),
             TransformerEncoder(depth, emb_size),
-            ClassificationHead(emb_size, n_classes, n_hidden[n_samples])
+            ClassificationHead(emb_size, n_classes, n_hidden[n_samples]),
         )

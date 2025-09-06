@@ -1,3 +1,9 @@
-from .process_data import NakanishiHandler,BenchmarkHandler,UTECHandler,WearableHandlerDry,WearableHandlerWet
+from .process_data import (
+    NakanishiHandler,
+    BenchmarkHandler,
+    UTECHandler,
+    WearableHandlerDry,
+    WearableHandlerWet,
+)
 from .dataset import trainSubjectIndependent
 from .utils import seed_everything

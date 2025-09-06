@@ -1,9 +1,18 @@
 import torch
 import numpy as np
 
+
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
-    def __init__(self, patience=20, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):
+
+    def __init__(
+        self,
+        patience=20,
+        verbose=False,
+        delta=0,
+        path="checkpoint.pt",
+        trace_func=print,
+    ):
         self.patience = patience
         self.verbose = verbose
         self.counter = 0
@@ -27,7 +36,8 @@ class EarlyStopping:
             self.best_score = score
             self.counter = 0
 
-def train_one_epoch(data_loader,model,criterion,optimizer,device,half=False):
+
+def train_one_epoch(data_loader, model, criterion, optimizer, device, half=False):
     model.train()
     train_loss = 0.0
     scaler = torch.cuda.amp.GradScaler(enabled=half)
@@ -36,7 +46,7 @@ def train_one_epoch(data_loader,model,criterion,optimizer,device,half=False):
         # get the inputs; data is a list of [inputs, labels]
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)
-        
+
         optimizer.zero_grad()
         if half:
             with torch.cuda.amp.autocast():
@@ -64,21 +74,22 @@ def evaluate(data_loader, model, criterion, device):
     correct = 0
     total = 0
 
-    # switch to evaluation mode 
+    # switch to evaluation mode
     model.eval()
 
     for data, labels in data_loader:
         data, labels = data.to(device), labels.to(device)
         target = model(data)
         # Loss computing
-        loss = criterion(target,labels)
+        loss = criterion(target, labels)
         valid_loss += loss.item()
-        # Accuracy return 
+        # Accuracy return
         _, predicted = torch.max(target.data, 1)
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
-        
-    return valid_loss,100*correct/total
+
+    return valid_loss, 100 * correct / total
+
 
 @torch.no_grad()
 def get_latent_space(data_loader, model, device):
@@ -92,7 +103,7 @@ def get_latent_space(data_loader, model, device):
         X_temp = embeddings.cpu().detach().numpy()
         Y_temp = labels.cpu().detach().numpy()
         for i in range(X_temp.shape[0]):
-            X_latent.append(X_temp[i,:])
+            X_latent.append(X_temp[i, :])
             Y_latent.append(Y_temp[i])
-        
-    return np.array(X_latent),np.array(Y_latent)
+
+    return np.array(X_latent), np.array(Y_latent)
