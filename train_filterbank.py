@@ -77,17 +77,20 @@ def get_args_parser():
 
     # Dataset parameters
     parser.add_argument(
-        "--data_path", default="datasets/Noisy-UTEC", type=str, help="dataset path"
+        "--data_path",
+        default="datasets/2015_Nakanishi_SSVEP_database",
+        type=str,
+        help="dataset path",
     )
     parser.add_argument(
         "--params_path",
-        default="datasets/UTEC.yaml",
+        default="datasets/Nakanishi.yaml",
         type=str,
         help="Parameter dataset path",
     )
     parser.add_argument(
         "--dataset",
-        default="UTEC",
+        default="NAKANISHI",
         choices=["NAKANISHI", "BENCHMARK", "UTEC"],
         type=str,
         help="Image Net dataset path",
@@ -100,13 +103,25 @@ def get_args_parser():
     parser.add_argument(
         "--device", default="cuda", help="device to use for training / testing"
     )
+    parser.add_argument(
+        "--compile", action=argparse.BooleanOptionalAction, default=True
+    )
+    parser.add_argument(
+        "--lower_precision", action=argparse.BooleanOptionalAction, default=True
+    )
+    parser.add_argument(
+        "--persistent_workers", action=argparse.BooleanOptionalAction, default=True
+    )
+    parser.add_argument(
+        "--init_weights", action=argparse.BooleanOptionalAction, default=True
+    )
     parser.add_argument("--num_workers", default=4, type=int)
     parser.add_argument(
         "--pin-mem",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.",
     )
-    parser.add_argument("--no-pin-mem", action="store_false", dest="pin_mem", help="")
     parser.set_defaults(pin_mem=True)
     return parser
 
@@ -166,21 +181,22 @@ def main(args):
             )
             match args.model:
                 case "ssvepformer":
-                    model = SSVEPformer(params)
+                    model = SSVEPformer(params, args.signal_size)
                 case "f1ssvepformer_A":
-                    model = fuzzySSVEPformerA(params)
+                    model = fuzzySSVEPformerA(params, args.signal_size)
                 case "f1ssvepformer_B":
-                    model = fuzzySSVEPformerB(params)
+                    model = fuzzySSVEPformerB(params, args.signal_size)
                 case "f1ssvepformer_C":
-                    model = fuzzySSVEPformerC(params)
+                    model = fuzzySSVEPformerC(params, args.signal_size)
                 case "f2ssvepformer_A":
-                    model = fuzzyT2SSVEPformerA(params)
+                    model = fuzzyT2SSVEPformerA(params, args.signal_size)
                 case "f2ssvepformer_B":
-                    model = fuzzyT2SSVEPformerB(params)
+                    model = fuzzyT2SSVEPformerB(params, args.signal_size)
                 case "f2ssvepformer_C":
-                    model = fuzzyT2SSVEPformerC(params)
+                    model = fuzzyT2SSVEPformerC(params, args.signal_size)
 
-            model.apply(initialize_weights)
+            if args.init_weights:
+                model.apply(initialize_weights)
             model.to(device)
             criterion = torch.nn.CrossEntropyLoss()
             optimizer = optim.SGD(
@@ -190,13 +206,21 @@ def main(args):
                 weight_decay=args.weight_decay,
             )
 
+            if args.compile:
+                model = torch.compile(model)
+
             start_time = time.time()
             train_losses = []
             valid_losses = []
             print(f"Subject {subject + 1}")
             for epoch in range(args.epochs):
                 train_loss = train_one_epoch(
-                    data_loader_train, model, criterion, optimizer, device
+                    data_loader_train,
+                    model,
+                    criterion,
+                    optimizer,
+                    device,
+                    args.lower_precision,
                 )
                 valid_loss, _ = evaluate(data_loader_val, model, criterion, device)
                 train_losses.append(train_loss / len(data_loader_train))
@@ -234,6 +258,8 @@ def main(args):
             momentum=args.momentum,
             weight_decay=args.weight_decay,
         )
+        if args.compile:
+            model = torch.compile(model)
         if args.early_stopping:
             early_stopping = EarlyStopping(patience=args.patience)
 
@@ -242,7 +268,12 @@ def main(args):
         print(f"Subject {subject + 1}")
         for epoch in range(20):
             train_loss = train_one_epoch(
-                data_loader_train, model, criterion, optimizer, device
+                data_loader_train,
+                model,
+                criterion,
+                optimizer,
+                device,
+                args.lower_precision,
             )
             valid_loss, _ = evaluate(data_loader_val, model, criterion, device)
             train_losses.append(train_loss / len(data_loader_train))

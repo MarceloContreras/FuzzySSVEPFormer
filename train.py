@@ -113,13 +113,35 @@ def get_args_parser():
     parser.add_argument(
         "--device", default="cuda", help="device to use for training / testing"
     )
+
+    parser.add_argument(
+        "--compile",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--lower_precision",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--persistent_workers",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--init_weights",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     parser.add_argument("--num_workers", default=4, type=int)
     parser.add_argument(
         "--pin-mem",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.",
     )
-    parser.add_argument("--no-pin-mem", action="store_false", dest="pin_mem", help="")
+
     parser.add_argument("--plot", action="store_true", default=False, help="")
     parser.add_argument("--save_model", action="store_true", default=False, help="")
     parser.set_defaults(pin_mem=True)
@@ -224,7 +246,8 @@ def main(args):
                     dropout=0.5,
                 )
 
-        # model.apply(initialize_weights)
+        if args.init_weights:
+            model.apply(initialize_weights)
         model.to(device)
         criterion = torch.nn.CrossEntropyLoss()
         optimizer = optim.SGD(
@@ -240,11 +263,17 @@ def main(args):
         start_time = time.time()
         train_losses = []
         valid_losses = []
-        model = torch.compile(model)
+        if args.compile:
+            model = torch.compile(model)
         print(f"Subject {subject + 1}")
         for epoch in range(args.epochs):
             train_loss = train_one_epoch(
-                data_loader_train, model, criterion, optimizer, device, True
+                data_loader_train,
+                model,
+                criterion,
+                optimizer,
+                device,
+                args.lower_precision,
             )
             valid_loss, _ = evaluate(data_loader_val, model, criterion, device)
             train_losses.append(train_loss / len(data_loader_train))

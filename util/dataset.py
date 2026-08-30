@@ -62,7 +62,7 @@ def trainSubjectIndependent(
         shuffle=shuffle,
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
-        persistent_workers=True,
+        persistent_workers=args.persistent_workers,
     )
     if split != 1.0:
         val_loader = torch.utils.data.DataLoader(
@@ -71,7 +71,7 @@ def trainSubjectIndependent(
             shuffle=shuffle,
             num_workers=args.num_workers,
             pin_memory=args.pin_mem,
-            persistent_workers=True,
+            persistent_workers=args.persistent_workers,
         )
     else:
         val_loader = []
@@ -81,7 +81,7 @@ def trainSubjectIndependent(
         shuffle=shuffle,
         num_workers=args.num_workers,
         pin_memory=args.pin_mem,
-        persistent_workers=True,
+        persistent_workers=args.persistent_workers,
     )
 
     return train_loader, val_loader, test_loader
