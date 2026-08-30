@@ -264,18 +264,20 @@ def main(args):
         train_losses = []
         valid_losses = []
         if args.compile:
-            model = torch.compile(model)
+            trained_model = torch.compile(model)
+        else:
+            trained_model = model
         print(f"Subject {subject + 1}")
         for epoch in range(args.epochs):
             train_loss = train_one_epoch(
                 data_loader_train,
-                model,
+                trained_model,
                 criterion,
                 optimizer,
                 device,
                 args.lower_precision,
             )
-            valid_loss, _ = evaluate(data_loader_val, model, criterion, device)
+            valid_loss, _ = evaluate(data_loader_val, trained_model, criterion, device)
             train_losses.append(train_loss / len(data_loader_train))
             valid_losses.append(valid_loss / len(data_loader_val))
             print(
@@ -310,7 +312,7 @@ def main(args):
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print("Training time {}".format(total_time_str))
 
-        _, test_acc = evaluate(data_loader_test, model, criterion, device)
+        _, test_acc = evaluate(data_loader_test, trained_model, criterion, device)
         test_accuracy.append(round(test_acc, 4))
         print("Test accuracy {:.3f}".format(test_acc))
         print("")

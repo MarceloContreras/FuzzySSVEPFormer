@@ -8,6 +8,7 @@ datasets/Wearable
 datasets/Wearable_split
 datasets/BETA
 datasets/Noisy-UTEC
+weights/*
 eval.sh
 wilcoxon.py
 plots
