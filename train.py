@@ -9,7 +9,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
-from braindecode.models import EEGNetv4
+# from braindecode.models import EEGNetv4
 from models import *
 from util import (
     NakanishiHandler,
@@ -192,12 +192,12 @@ def main(args):
                 model = fuzzyT2SSVEPformerB(params, args.signal_size)
             case "f2ssvepformer_C":
                 model = fuzzyT2SSVEPformerC(params, args.signal_size)
-            case "EEGNet":
-                model = EEGNetv4(
-                    params["Channels"],
-                    params["Classes"],
-                    int(args.signal_size * params["Fs"]) + 25,
-                )
+            # case "EEGNet":
+            #     model = EEGNetv4(
+            #         params["Channels"],
+            #         params["Classes"],
+            #         int(args.signal_size * params["Fs"]) + 25,
+            #     )
             case "SSVEPNet":
                 model = ESNet(
                     params["Channels"],
@@ -224,7 +224,7 @@ def main(args):
                     dropout=0.5,
                 )
 
-        model.apply(initialize_weights)
+        # model.apply(initialize_weights)
         model.to(device)
         criterion = torch.nn.CrossEntropyLoss()
         optimizer = optim.SGD(
@@ -240,10 +240,11 @@ def main(args):
         start_time = time.time()
         train_losses = []
         valid_losses = []
+        model = torch.compile(model)
         print(f"Subject {subject + 1}")
         for epoch in range(args.epochs):
             train_loss = train_one_epoch(
-                data_loader_train, model, criterion, optimizer, device
+                data_loader_train, model, criterion, optimizer, device, True
             )
             valid_loss, _ = evaluate(data_loader_val, model, criterion, device)
             train_losses.append(train_loss / len(data_loader_train))
