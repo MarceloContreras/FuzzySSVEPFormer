@@ -16,7 +16,7 @@ This project is the code implementation of "FUZZY-SSVEPFORMER: CLASIFICACIÓN DE
 
 ## Model overview
 
-![](model.png)
+![](media/model.png)
 
 From the base model, three variants (A,B and C) were proposed where the location of neuro-fuzzy block is changed between encoder and classification head.
 
