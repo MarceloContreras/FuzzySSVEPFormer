@@ -9,7 +9,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
-# from braindecode.models import EEGNetv4
+from braindecode.models import EEGNetv4
 from models import *
 from util import (
     NakanishiHandler,
@@ -154,7 +154,7 @@ def main(args):
     with open(args.params_path) as f:
         params = yaml.load(f, Loader=yaml.loader.SafeLoader)
     device = torch.device(args.device)
-    seed_everything()
+    # seed_everything()
     cudnn.benchmark = True
 
     # Creata results file
@@ -214,16 +214,16 @@ def main(args):
                 model = fuzzyT2SSVEPformerB(params, args.signal_size)
             case "f2ssvepformer_C":
                 model = fuzzyT2SSVEPformerC(params, args.signal_size)
-            # case "EEGNet":
-            #     model = EEGNetv4(
-            #         params["Channels"],
-            #         params["Classes"],
-            #         int(args.signal_size * params["Fs"]) + 25,
-            #     )
+            case "EEGNet":
+                model = EEGNetv4(
+                    params["Channels"],
+                    params["Classes"],
+                    int(args.signal_size * params["Fs"]) + 25,
+                )
             case "SSVEPNet":
                 model = ESNet(
                     params["Channels"],
-                    round(args.signal_size * params["Fs"]),
+                    round(args.signal_size * params["Fs"]) + 25,
                     params["Classes"],
                 )
             case "Conformer":
@@ -291,7 +291,9 @@ def main(args):
         if args.plot:
             plt.plot(train_losses)
             plt.plot(valid_losses)
-            plt.savefig(f"plots/{args.model}_S{subject}_{args.signal_size}s.png")
+            plt.savefig(
+                f"plots/{args.model}_{args.dataset}_S{subject}_{args.signal_size}s.png"
+            )
             plt.close()
 
         if args.save_model:
@@ -305,6 +307,14 @@ def main(args):
                 f"{args.model}_{args.signal_size:.1f}s_{args.dataset}_S{subject+1}.pth"
             )
             save_path = os.path.join(weights_path, model_name)
+
+            # Add version number if the file already exists
+            version = 2
+            while os.path.exists(save_path):
+                model_name = f"{model_name}_seed{version}.pth"
+                save_path = os.path.join(weights_path, model_name)
+                version += 1
+
             torch.save(model.state_dict(), save_path)
 
         # Reports
