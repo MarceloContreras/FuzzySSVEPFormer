@@ -159,6 +159,27 @@ def main(args):
         f"SSVEPformer: Training {args.model} net for {args.epochs} epochs/{args.batch_size} batch"
     )
     test_accuracy = []
+    header = ["Time"] + list(range(1, params["Subs"] + 1))
+
+    # Create a new row for this training run
+    with open(filename, "a", newline="") as file:
+        writer = csv.writer(file)
+
+        # Add header if file doesn't exist or is empty
+        if os.path.getsize(filename) == 0:
+            writer.writerow(header)
+
+        # Add an empty row for this run
+        writer.writerow([args.signal_size])
+
+    # Remember which row belongs to this run
+    run_row = None
+
+    # Find the last row (the one we just created)
+    with open(filename, "r", newline="") as file:
+        rows = list(csv.reader(file))
+        run_row = len(rows) - 1
+
     for subject in range(params["Subs"]):
         subnets = []
 
@@ -291,10 +312,17 @@ def main(args):
         print("Test accuracy {:.3f}".format(test_acc))
         print("")
 
-    # save results
-    with open(filename, "a") as file:
-        writer = csv.writer(file)
-        writer.writerow([args.signal_size] + test_accuracy)
+        # Read existing CSV
+        with open(filename, "r", newline="") as file:
+            rows = list(csv.reader(file))
+
+        # Update ONLY this run's row
+        rows[run_row] = [args.signal_size] + test_accuracy
+
+        # Rewrite CSV
+        with open(filename, "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerows(rows)
 
 
 if __name__ == "__main__":

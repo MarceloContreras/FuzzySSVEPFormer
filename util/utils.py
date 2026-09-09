@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import os
+import random
 
 
 def seed_everything(seed=42):
@@ -9,7 +10,7 @@ def seed_everything(seed=42):
     Input:
     - seed: random state for the events
     """
-    # random.seed(seed)
+    random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

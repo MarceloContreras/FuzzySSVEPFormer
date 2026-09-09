@@ -83,6 +83,8 @@ def get_args_parser():
     )
     parser.add_argument("--patience", default=20, type=int)
 
+    parser.add_argument("--seed", default=1, type=int)
+
     # Dataset parameters
     parser.add_argument(
         "--data_path",
@@ -154,7 +156,7 @@ def main(args):
     with open(args.params_path) as f:
         params = yaml.load(f, Loader=yaml.loader.SafeLoader)
     device = torch.device(args.device)
-    # seed_everything()
+    seed_everything(args.seed)
     cudnn.benchmark = True
 
     # Creata results file
@@ -185,6 +187,27 @@ def main(args):
         f"SSVEPformer: Training {args.model} net for {args.epochs} epochs/{args.batch_size} batch"
     )
     test_accuracy = []
+    header = ["Time"] + list(range(1, params["Subs"] + 1))
+
+    # Create a new row for this training run
+    with open(filename, "a", newline="") as file:
+        writer = csv.writer(file)
+
+        # Add header if file doesn't exist or is empty
+        if os.path.getsize(filename) == 0:
+            writer.writerow(header)
+
+        # Add an empty row for this run
+        writer.writerow([args.signal_size])
+
+    # Remember which row belongs to this run
+    run_row = None
+
+    # Find the last row (the one we just created)
+    with open(filename, "r", newline="") as file:
+        rows = list(csv.reader(file))
+        run_row = len(rows) - 1
+
     for subject in range(params["Subs"]):
         data_loader_train, data_loader_val, data_loader_test = trainSubjectIndependent(
             train_x,
@@ -327,10 +350,17 @@ def main(args):
         print("Test accuracy {:.3f}".format(test_acc))
         print("")
 
-    # save results
-    with open(filename, "a") as file:
-        writer = csv.writer(file)
-        writer.writerow([args.signal_size] + test_accuracy)
+        # Read existing CSV
+        with open(filename, "r", newline="") as file:
+            rows = list(csv.reader(file))
+
+        # Update ONLY this run's row
+        rows[run_row] = [args.signal_size] + test_accuracy
+
+        # Rewrite CSV
+        with open(filename, "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerows(rows)
 
 
 if __name__ == "__main__":
