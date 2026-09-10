@@ -66,7 +66,9 @@ def main(args):
     test_accuracy = []
 
     # Creata results file
-    filename = os.path.join(args.output_dir, f"CNN_e{CNN_PARAMS['epochs']}_UTEC.csv")
+    filename = os.path.join(
+        args.output_dir, f"CNN_e{CNN_PARAMS['epochs']}_Nakanishi.csv"
+    )
     if not (os.path.exists(filename)):
         with open(filename, "w") as file:
             writer = csv.writer(file)
@@ -242,7 +244,7 @@ def main(args):
             os.makedirs(weights_path, exist_ok=True)
 
             # Base model name
-            base_name = f"CNN_{args.signal_size:.1f}s_" f"UTEC_S{subject+1}"
+            base_name = f"CNN_{args.signal_size:.1f}s_" f"Nakanishi_S{subject+1}"
 
             # First version
             save_path = os.path.join(weights_path, f"{base_name}.weights.h5")

@@ -19,7 +19,7 @@ def get_args_parser():
     # Dataset parameters
     parser.add_argument(
         "--dataset_path",
-        default="/home/marcelo/Documents/Tesis/FuzzySSVEPFormer/datasets/2015_Nakanishi_SSVEP_database",
+        default="datasets/Noisy-UTEC",
         type=str,
         help="dataset path",
     )
