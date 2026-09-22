@@ -7,3 +7,4 @@ from .process_data import (
 )
 from .dataset import trainSubjectIndependent
 from .utils import seed_everything
+from .stat_test import *

@@ -1,17 +1,17 @@
 #!/bin/bash
 
-DATA_PATH="/workspace/FuzzySSVEPFormer/datasets/Noisy-UTEC"
-PARAMS_PATH="/workspace/FuzzySSVEPFormer/datasets/UTEC.yaml"
+DATA_PATH="/home/marcelo/Documents/Tesis/FuzzySSVEPFormer/datasets/2015_Nakanishi_SSVEP_database"
+PARAMS_PATH="/home/marcelo/Documents/Tesis/FuzzySSVEPFormer/datasets/Nakanishi.yaml"
 
 declare -A EPOCHS
-EPOCHS[ssvepformer]=400
-EPOCHS[f1ssvepformer_C]=400
-EPOCHS[f2ssvepformer_C]=400
+EPOCHS[ssvepformer]=100
+EPOCHS[f1ssvepformer_C]=150
+EPOCHS[f2ssvepformer_C]=150
 EPOCHS[EEGNet]=600
-EPOCHS[SSVEPNet]=1000
-EPOCHS[Deformer]=800
+EPOCHS[SSVEPNet]=500
+EPOCHS[Deformer]=400
 
-MODELS=("ssvepformer" "f1ssvepformer_C" "f2ssvepformer_C" "EEGNet" "SSVEPNet" "Deformer")
+MODELS=("f1ssvepformer_C" "f2ssvepformer_C")
 SIGNAL_SIZES=("0.1" "0.2" "0.3" "0.4" "0.5" "0.6" "0.7" "0.8" "0.9" "1.0")
 SEEDS=(1 10 30 40 50)
 
@@ -36,7 +36,8 @@ for model in "${MODELS[@]}"; do
                 --seed "$seed" \
                 --data_path "$DATA_PATH" \
                 --params_path "$PARAMS_PATH" \
-                --dataset UTEC \
+                --dataset NAKANISHI \
+                --save_model \
                 $extra_args
 
         done
