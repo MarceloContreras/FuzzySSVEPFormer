@@ -157,7 +157,6 @@ def main(args):
         params = yaml.load(f, Loader=yaml.loader.SafeLoader)
     device = torch.device(args.device)
     seed_everything(args.seed)
-    cudnn.benchmark = True
 
     # Creata results file
     filename = os.path.join(
