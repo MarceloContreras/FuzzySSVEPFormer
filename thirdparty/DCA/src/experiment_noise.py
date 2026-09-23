@@ -20,15 +20,20 @@ def main(
     sub: int = typer.Option(1, help="Subject"),
     noise: float = typer.Option(0.01, help="Noise"),
     dataset: str = typer.Option("NAKANISHI", help="Dataset type"),
+    seed: int = typer.Option(1, help="seed"),
 ):
 
     # Set path to the output folders
-    experiment_path = f"output/{model}_{dataset}_S{sub}_n{noise}"
+    experiment_path = f"output/{model}_{dataset}_S{sub}_n{noise}_seed{seed}"
     experiment_id = "template_id1"
 
     # Load data
-    R = np.load(f"latent_space/X_{model}_{1.0}s_{dataset}_S{sub}.npy")
-    E = np.load(f"latent_space/X_{model}_{1.0}s_{dataset}_S{sub}_n{noise}.npy")
+    R = np.load(
+        f"/home/marcelo/Documents/Tesis/results/embeddings/e1/{dataset}/X_{model}_S{sub}_n0_seed{seed}.npy"
+    )
+    E = np.load(
+        f"/home/marcelo/Documents/Tesis/results/embeddings/e1/{dataset}/X_{model}_S{sub}_n{noise}_seed{seed}.npy"
+    )
 
     # Generate input parameters
     data_config = REData(R=R, E=E)

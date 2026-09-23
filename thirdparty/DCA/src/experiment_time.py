@@ -14,21 +14,26 @@ app = typer.Typer()
 
 
 @app.command()
-def first_example(
+def main(
     cleanup: int = 0,
     model: str = typer.Option("f1ssvepformer_C", help="Model of transformer"),
     sub: int = typer.Option(1, help="Subject"),
     time: float = typer.Option(0.5, help="time"),
     dataset: str = typer.Option("NAKANISHI", help="Dataset type"),
+    seed: int = typer.Option(1, help="seed"),
 ):
 
     # Set path to the output folders
-    experiment_path = f"output/{model}_{dataset}_S{sub}_t{time}"
+    experiment_path = f"output/{model}_{dataset}_S{sub}_t{time}_seed{seed}"
     experiment_id = "template_id1"
 
     # Load data
-    R = np.load(f"latent_space/X_{model}_1.0s_{dataset}_S{sub}.npy")
-    E = np.load(f"latent_space/X_{model}_{time}s_{dataset}_S{sub}.npy")
+    R = np.load(
+        f"/home/marcelo/Documents/Tesis/results/embeddings/e2/{dataset}/X_{model}_S{sub}_t1.0_seed{seed}.npy"
+    )
+    E = np.load(
+        f"/home/marcelo/Documents/Tesis/results/embeddings/e2/{dataset}/X_{model}_S{sub}_t{time}_seed{seed}.npy"
+    )
 
     # Generate input parameters
     data_config = REData(R=R, E=E)
@@ -60,4 +65,4 @@ def first_example(
 
 
 if __name__ == "__main__":
-    typer.run(first_example)
+    typer.run(main)

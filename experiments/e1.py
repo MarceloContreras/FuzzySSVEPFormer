@@ -146,7 +146,7 @@ def main(args):
     device = torch.device(args.device)
 
     # Variables to compare against
-    SIGMAS = [1e0, 1e1, 1e2, 1e3, 1e4, 1e5]
+    SIGMAS = [0, 1e0, 1e1, 1e2, 1e3, 1e4, 1e5]
     SUBJECTS = list(range(1, params["Subs"] + 1))
     SEEDS = [1, 10, 30, 40, 50]
 

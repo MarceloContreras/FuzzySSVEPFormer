@@ -12,3 +12,6 @@ weights/*
 eval.sh
 wilcoxon.py
 plots
+thirdparty/vgt
+thirdparty/DCA/dca/__pycache__
+thirdparty/DCA/output
