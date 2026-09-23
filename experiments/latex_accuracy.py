@@ -24,10 +24,12 @@ def estrellas(p):
 def agregar_significancia(tabla, archivo):
     pruebas = pd.read_csv(archivo)
     requeridas = {"dataset", "ventana", "modelo_x", "modelo_y", "p_holm"}
+
     if not requeridas.issubset(pruebas.columns):
         raise ValueError(
             f"Missing Wilcoxon columns: {sorted(requeridas - set(pruebas.columns))}"
         )
+
     pruebas = pruebas.loc[
         pruebas["dataset"].eq("nakanishi")
         & pruebas["modelo_x"].isin(FUZZY)
@@ -35,14 +37,18 @@ def agregar_significancia(tabla, archivo):
     ].copy()
     pruebas["ventana"] = pd.to_numeric(pruebas["ventana"], errors="raise").round(12)
     pruebas["p_holm"] = pd.to_numeric(pruebas["p_holm"], errors="raise")
+
     if not np.isfinite(pruebas[["ventana", "p_holm"]].to_numpy()).all():
         raise ValueError("Wilcoxon windows and p-values must be finite.")
+
     if not pruebas["p_holm"].between(0, 1).all():
         raise ValueError("p_holm must be between 0 and 1.")
+
     claves = ["modelo_x", "modelo_y", "ventana"]
     if pruebas.duplicated(claves).any():
         raise ValueError("Duplicate Wilcoxon comparisons for the same window.")
     pvalores = pruebas.set_index(claves)["p_holm"]
+
     for metodo in BASELINES:
         for ventana in tabla.columns:
             marcas = ""
@@ -54,6 +60,7 @@ def agregar_significancia(tabla, archivo):
                 if clave not in pvalores.index:
                     raise ValueError(f"Missing Wilcoxon comparison: {clave}")
                 stars = estrellas(pvalores.loc[clave])
+
                 if stars:
                     marcas += (
                         posicion + r"{\text{\textcolor{" + color + "}{" + stars + "}}}"
@@ -68,11 +75,13 @@ def generar_tabla(results_dir=RESULTADOS_DIR, decimals=2, wilcoxon=None):
     for metodo, archivo in ARCHIVOS.items():
         df = cargar_resultados(Path(results_dir) / archivo, "nakanishi", metodo)
         sujetos = df.groupby(["ventana", "sujeto"])["acc"].mean()
+
         if referencia is None:
             referencia = sujetos.index
         elif not sujetos.index.equals(referencia):
             raise ValueError(f"{metodo}: subjects/windows do not match.")
         resumen = sujetos.groupby(level="ventana").agg(["mean", "std", "count"])
+
         if (resumen["count"] < 2).any():
             raise ValueError("At least two subjects per window are required.")
         resumen["se"] = resumen["std"] / np.sqrt(resumen["count"])
@@ -88,6 +97,7 @@ def generar_tabla(results_dir=RESULTADOS_DIR, decimals=2, wilcoxon=None):
 
     tabla = pd.DataFrame(filas).sort_index(axis=1)
     nota = ""
+
     if wilcoxon is not None:
         tabla = agregar_significancia(tabla, wilcoxon)
         nota = (
@@ -96,6 +106,7 @@ def generar_tabla(results_dir=RESULTADOS_DIR, decimals=2, wilcoxon=None):
             r"$*p<0.05$, $**p<0.01$, $***p<0.001$. "
             r"They do not indicate the direction of the difference."
         )
+
     tabla.columns = [f"{v:g}" for v in tabla.columns]
     tabla.index.name = "Method"
     latex = tabla.to_latex(

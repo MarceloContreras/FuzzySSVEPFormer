@@ -207,7 +207,7 @@ def main(args):
             datahandler = UTECHandler(params, args.signal_size, args.data_path)
 
     train_x, train_y = datahandler.getAllSubjectsData()
-    weights_path = "/home/marcelo/Documents/Tesis/run_pod_data/weights_nakanishi"
+    weights_path = "/home/marcelo/Documents/Tesis/results/checkpoints/utec"
     criterion = torch.nn.CrossEntropyLoss()
 
     # Validate all checkpoint counts before creating report rows.
@@ -277,11 +277,11 @@ def main(args):
                         data_loader_test, model, device
                     )
                     np.save(
-                        f"latent_space/X_{args.model}_{args.dataset}_S{sub+1}_n{noise}_seed{seed_num}",
+                        f"/home/marcelo/Documents/Tesis/results/embeddings/e1/{args.dataset}/X_{args.model}_S{sub}_n{noise}_seed{seed_num}",
                         X_latent,
                     )
                     np.save(
-                        f"latent_space/Y_{args.model}_{args.dataset}_S{sub+1}_n{noise}_seed{seed_num}",
+                        f"/home/marcelo/Documents/Tesis/results/embeddings/e1/{args.dataset}/Y_{args.model}_S{sub}_n{noise}_seed{seed_num}",
                         Y_latent_space,
                     )
 

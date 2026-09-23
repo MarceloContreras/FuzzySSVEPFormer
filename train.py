@@ -314,7 +314,7 @@ def main(args):
             plt.plot(train_losses)
             plt.plot(valid_losses)
             plt.savefig(
-                f"plots/{args.model}_{args.dataset}_S{subject}_{args.signal_size}s.png"
+                f"plots/{args.model}_{args.dataset}_S{subject+1}_{args.signal_size}s.png"
             )
             plt.close()
 
@@ -324,17 +324,19 @@ def main(args):
             if not os.path.exists(weights_path):
                 os.makedirs(weights_path)
 
-            # Save model weights
-            model_name = (
-                f"{args.model}_{args.signal_size:.1f}s_{args.dataset}_S{subject+1}.pth"
+            # Use the actual training seed and keep the base name unchanged.
+            checkpoint_stem = (
+                f"{args.model}_{args.signal_size:.1f}s_{args.dataset}"
+                f"_S{subject+1}_seed{args.seed}"
             )
-            save_path = os.path.join(weights_path, model_name)
+            save_path = os.path.join(weights_path, f"{checkpoint_stem}.pth")
 
-            # Add version number if the file already exists
+            # Preserve previous runs without accumulating suffixes.
             version = 2
             while os.path.exists(save_path):
-                model_name = f"{model_name}_seed{version}.pth"
-                save_path = os.path.join(weights_path, model_name)
+                save_path = os.path.join(
+                    weights_path, f"{checkpoint_stem}_run{version}.pth"
+                )
                 version += 1
 
             torch.save(model.state_dict(), save_path)

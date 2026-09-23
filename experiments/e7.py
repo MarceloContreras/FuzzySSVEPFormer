@@ -23,7 +23,7 @@ ARCHIVOS = {
     "SSVEPNet": "SSVEPNet_e500_NAKANISHI.csv",
     "TRCA": "TRCA_Nakanishi.csv",
     "ssvepformer": "ssvepformer_e100_NAKANISHI.csv",
-    "f1ssvepformer": "f1ssvepformer_C_e100_NAKANISHI.csv",
+    "f1ssvepformer": "f1ssvepformer_C_e150_NAKANISHI.csv",
     "f2ssvepformer": "f2ssvepformer_C_e100_NAKANISHI.csv",
 }
 BASELINES = ("CNN", "Deformer", "EEGNet", "SSVEPNet", "TRCA", "ssvepformer")
