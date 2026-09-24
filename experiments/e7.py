@@ -19,7 +19,7 @@ PREFIJOS = {
     "f1ssvepformer": "f1ssvepformer_C",
     "f2ssvepformer": "f2ssvepformer_C",
 }
-BASELINES = ("CNN", "Deformer", "EEGNet", "SSVEPNet", "TRCA", "ssvepformer")
+BASELINES = ("CNN", "Deformer", "EEGNet", "TRCA", "ssvepformer")
 FUZZY = ("f1ssvepformer", "f2ssvepformer")
 
 

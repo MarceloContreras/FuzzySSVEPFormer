@@ -1,4 +1,4 @@
-"""Export dataset accuracy mean +/- SE by method and time window."""
+"""Export dataset accuracy or ITR mean +/- SE by method and time window."""
 
 import argparse
 import json
@@ -17,6 +17,8 @@ from experiments.e7 import (
     cargar_resultados,
     descubrir_archivos,
 )
+
+from util.itr import itr
 
 
 def estrellas(p):
@@ -78,8 +80,15 @@ def agregar_significancia(tabla, archivo, dataset="nakanishi"):
 
 
 def generar_tabla(
-    results_dir=None, decimals=2, wilcoxon=None, dataset="nakanishi", archivos=None
+    results_dir=None,
+    decimals=2,
+    wilcoxon=None,
+    dataset="nakanishi",
+    archivos=None,
+    metric="acc",
 ):
+    if metric not in ("acc", "itr"):
+        raise ValueError(f"Unsupported metric: {metric}")
     dataset = dataset.lower()
     if dataset not in DATASETS:
         raise ValueError(f"Unsupported dataset: {dataset}")
@@ -95,7 +104,14 @@ def generar_tabla(
     referencia = None
     for metodo in (*BASELINES, *FUZZY):
         df = cargar_resultados(results_dir / archivos[metodo], dataset, metodo)
-        sujetos = df.groupby(["ventana", "sujeto"])["acc"].mean()
+        if metric == "itr":
+            if not df["acc"].between(0, 100).all() or not df["ventana"].gt(0).all():
+                raise ValueError(
+                    f"{metodo}: ITR requires accuracy in [0, 100] and Time > 0."
+                )
+            # Convert each repetition before averaging, matching e7.py.
+            df["itr"] = itr(df["acc"] / 100.0, DATASETS[dataset], df["ventana"])
+        sujetos = df.groupby(["ventana", "sujeto"])[metric].mean()
 
         if referencia is None:
             referencia = sujetos.index
@@ -130,16 +146,19 @@ def generar_tabla(
 
     tabla.columns = [f"{v:g}" for v in tabla.columns]
     tabla.index.name = "Method"
+    metric_title = "ITR (bits/min)" if metric == "itr" else r"accuracy (\%)"
+    metric_name = "itr" if metric == "itr" else "accuracy"
     latex = tabla.to_latex(
         escape=False,
         column_format="l" + "c" * len(tabla.columns),
         caption=(
             ("Nakanishi" if dataset == "nakanishi" else "UTEC")
-            + r" accuracy (\%): mean $\pm$ standard error across subjects, "
+            + f" {metric_title}"
+            + r": mean $\pm$ standard error across subjects, "
             r"after averaging repetitions within each subject. "
             r"Columns indicate time windows in seconds." + nota
         ),
-        label=f"tab:{dataset}-accuracy",
+        label=f"tab:{dataset}-{metric_name}",
     )
     return tabla, latex
 
@@ -148,6 +167,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dataset", type=str.lower, choices=DATASETS, default="nakanishi"
+    )
+    parser.add_argument(
+        "--metric",
+        choices=("acc", "itr"),
+        default="acc",
+        help="Metric to export; ITR is calculated from the raw accuracy CSVs.",
     )
     parser.add_argument("--results-dir", type=Path)
     parser.add_argument("--output", type=Path)
@@ -161,7 +186,7 @@ def main():
         "--wilcoxon",
         type=Path,
         default=None,
-        help="CSV containing per-window Holm-adjusted p-values.",
+        help="CSV containing Holm-adjusted p-values for the selected metric.",
     )
     args = parser.parse_args()
     archivos = None
@@ -172,14 +197,17 @@ def main():
             isinstance(k, str) and isinstance(v, str) for k, v in archivos.items()
         ):
             parser.error("--files-map requires a JSON object {model: accuracy.csv}.")
-    args.output = args.output or Path(f"accuracy_{args.dataset}.tex")
-    wilcoxon = args.wilcoxon or Path(f"wilcoxon_{args.dataset}.csv")
+    metric_name = "itr" if args.metric == "itr" else "accuracy"
+    suffix = "_itr" if args.metric == "itr" else ""
+    args.output = args.output or Path(f"{metric_name}_{args.dataset}.tex")
+    wilcoxon = args.wilcoxon or Path(f"wilcoxon_{args.dataset}{suffix}.csv")
     _, latex = generar_tabla(
         args.results_dir,
         args.decimals,
         wilcoxon,
         dataset=args.dataset,
         archivos=archivos,
+        metric=args.metric,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(latex, encoding="utf-8")
