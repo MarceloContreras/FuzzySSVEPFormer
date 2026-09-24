@@ -22,6 +22,7 @@ from util import (
 )
 from util.engine import get_latent_space, evaluate
 from util.utils import find_checkpoint
+from util.itr import itr
 
 
 def get_args_parser():
@@ -229,6 +230,13 @@ def main(args):
         filename, args.signal_size, SUBJECTS, WINDOWS, SEEDS
     )
 
+    itr_filename = os.path.join(
+        args.output_dir, f"{args.model}_{args.dataset}_TimeVarying_ITR.csv"
+    )
+    itr_rows, itr_run_rows, itr_subject_columns = initialize_test_time_report(
+        itr_filename, args.signal_size, SUBJECTS, WINDOWS, SEEDS
+    )
+
     # Create folder to save embeddings
     if args.save_latent:
         if not os.path.exists("latent_space"):
@@ -278,6 +286,13 @@ def main(args):
                 rows[row_index][subject_columns[sub]] = round(test_acc, 4)
                 with open(filename, "w", newline="") as file:
                     csv.writer(file).writerows(rows)
+
+                # ITR in bits/min, using the evaluated window duration.
+                test_itr = itr(test_acc / 100.0, params["Classes"], test_window_length)
+                itr_row_index = itr_run_rows[(test_window_length, seed_num)]
+                itr_rows[itr_row_index][itr_subject_columns[sub]] = round(test_itr, 4)
+                with open(itr_filename, "w", newline="") as file:
+                    csv.writer(file).writerows(itr_rows)
 
                 # * Embeddings
                 if args.save_latent:

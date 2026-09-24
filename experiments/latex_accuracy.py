@@ -1,6 +1,7 @@
-"""Export Nakanishi accuracy mean +/- SE by method and time window."""
+"""Export dataset accuracy mean +/- SE by method and time window."""
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -8,7 +9,14 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from experiments.e7 import ARCHIVOS, RESULTADOS_DIR, BASELINES, FUZZY, cargar_resultados
+from experiments.e7 import (
+    RESULTADOS_ROOT,
+    DATASETS,
+    BASELINES,
+    FUZZY,
+    cargar_resultados,
+    descubrir_archivos,
+)
 
 
 def estrellas(p):
@@ -21,7 +29,7 @@ def estrellas(p):
     return ""
 
 
-def agregar_significancia(tabla, archivo):
+def agregar_significancia(tabla, archivo, dataset="nakanishi"):
     pruebas = pd.read_csv(archivo)
     requeridas = {"dataset", "ventana", "modelo_x", "modelo_y", "p_holm"}
 
@@ -31,7 +39,7 @@ def agregar_significancia(tabla, archivo):
         )
 
     pruebas = pruebas.loc[
-        pruebas["dataset"].eq("nakanishi")
+        pruebas["dataset"].str.lower().eq(dataset.lower())
         & pruebas["modelo_x"].isin(FUZZY)
         & pruebas["modelo_y"].isin(BASELINES)
     ].copy()
@@ -69,11 +77,24 @@ def agregar_significancia(tabla, archivo):
     return tabla
 
 
-def generar_tabla(results_dir=RESULTADOS_DIR, decimals=2, wilcoxon=None):
+def generar_tabla(
+    results_dir=None, decimals=2, wilcoxon=None, dataset="nakanishi", archivos=None
+):
+    dataset = dataset.lower()
+    if dataset not in DATASETS:
+        raise ValueError(f"Unsupported dataset: {dataset}")
+    results_dir = (
+        RESULTADOS_ROOT / dataset if results_dir is None else Path(results_dir)
+    )
+    if archivos is None:
+        archivos = descubrir_archivos(results_dir, dataset, (*BASELINES, *FUZZY))
+    faltantes = set((*BASELINES, *FUZZY)) - archivos.keys()
+    if faltantes:
+        raise ValueError(f"Missing models in file mapping: {sorted(faltantes)}")
     filas = []
     referencia = None
-    for metodo, archivo in ARCHIVOS.items():
-        df = cargar_resultados(Path(results_dir) / archivo, "nakanishi", metodo)
+    for metodo in (*BASELINES, *FUZZY):
+        df = cargar_resultados(results_dir / archivos[metodo], dataset, metodo)
         sujetos = df.groupby(["ventana", "sujeto"])["acc"].mean()
 
         if referencia is None:
@@ -99,7 +120,7 @@ def generar_tabla(results_dir=RESULTADOS_DIR, decimals=2, wilcoxon=None):
     nota = ""
 
     if wilcoxon is not None:
-        tabla = agregar_significancia(tabla, wilcoxon)
+        tabla = agregar_significancia(tabla, wilcoxon, dataset)
         nota = (
             r" Blue superscripts compare each baseline with F1; red subscripts with F2. "
             r"Stars indicate two-sided differences using Holm-adjusted p-values: "
@@ -113,28 +134,53 @@ def generar_tabla(results_dir=RESULTADOS_DIR, decimals=2, wilcoxon=None):
         escape=False,
         column_format="l" + "c" * len(tabla.columns),
         caption=(
-            r"Nakanishi accuracy (\%): mean $\pm$ standard error across subjects, "
+            ("Nakanishi" if dataset == "nakanishi" else "UTEC")
+            + r" accuracy (\%): mean $\pm$ standard error across subjects, "
             r"after averaging repetitions within each subject. "
             r"Columns indicate time windows in seconds." + nota
         ),
-        label="tab:nakanishi-accuracy",
+        label=f"tab:{dataset}-accuracy",
     )
     return tabla, latex
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--results-dir", type=Path, default=RESULTADOS_DIR)
-    parser.add_argument("--output", type=Path, default=Path("accuracy_nakanishi.tex"))
+    parser.add_argument(
+        "--dataset", type=str.lower, choices=DATASETS, default="nakanishi"
+    )
+    parser.add_argument("--results-dir", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--files-map",
+        type=Path,
+        help="JSON {model: accuracy.csv}, as in e7.py; paths relative to --results-dir.",
+    )
     parser.add_argument("--decimals", type=int, choices=range(7), default=2)
     parser.add_argument(
         "--wilcoxon",
         type=Path,
-        default=Path("wilcoxon_nakanishi.csv"),
+        default=None,
         help="CSV containing per-window Holm-adjusted p-values.",
     )
     args = parser.parse_args()
-    _, latex = generar_tabla(args.results_dir, args.decimals, args.wilcoxon)
+    archivos = None
+    if args.files_map is not None:
+        with args.files_map.open() as file:
+            archivos = json.load(file)
+        if not isinstance(archivos, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in archivos.items()
+        ):
+            parser.error("--files-map requires a JSON object {model: accuracy.csv}.")
+    args.output = args.output or Path(f"accuracy_{args.dataset}.tex")
+    wilcoxon = args.wilcoxon or Path(f"wilcoxon_{args.dataset}.csv")
+    _, latex = generar_tabla(
+        args.results_dir,
+        args.decimals,
+        wilcoxon,
+        dataset=args.dataset,
+        archivos=archivos,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(latex, encoding="utf-8")
     print(f"Saved {args.output}")

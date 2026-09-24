@@ -15,3 +15,4 @@ plots
 thirdparty/vgt
 thirdparty/DCA/dca/__pycache__
 thirdparty/DCA/output
+*.json
